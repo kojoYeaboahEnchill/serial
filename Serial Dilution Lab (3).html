@@ -1,0 +1,718 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Serial Dilution Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: full-bleed 3D bench with floating instrument panels (procedure left, tubes + record right, counter bottom-right, controls bottom) */
+:root{--ink:#e9f1ef;--panel:rgba(14,22,25,.92);--line:#34535a;--acc:#6fe0c5;--mut:#9db3b0;--hot:#e4572e;--bg:#0a1014;color-scheme:dark;box-sizing:border-box}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--ink:#152124;--panel:rgba(246,250,249,.95);--line:#b8cbc8;--acc:#0b7a68;--mut:#4d6663;--hot:#c2410c;--bg:#f0f4f3;color-scheme:light}}
+:root[data-theme="light"]{--ink:#152124;--panel:rgba(246,250,249,.95);--line:#b8cbc8;--acc:#0b7a68;--mut:#4d6663;--hot:#c2410c;--bg:#f0f4f3;color-scheme:light}
+:root[data-theme="dark"]{--ink:#e9f1ef;--panel:rgba(14,22,25,.92);--line:#34535a;--acc:#6fe0c5;--mut:#9db3b0;--hot:#e4572e;--bg:#0a1014;color-scheme:dark}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--ink);font-family:'Atkinson Hyperlegible',system-ui,sans-serif}
+canvas#scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.panel{position:fixed;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;backdrop-filter:blur(8px);font-size:13px;line-height:1.45}
+h1{font-size:15px;margin:0 0 6px;text-wrap:balance}h2{font-size:12px;margin:0 0 6px;color:var(--acc);text-transform:uppercase;letter-spacing:.5px}.lead{margin:0 0 8px;color:var(--mut);font-size:12px}
+sup{font-size:.72em;line-height:0}
+#steps{top:calc(12px + env(safe-area-inset-top,0px));left:12px;width:min(320px,calc(100vw - 24px));max-height:calc(100vh - 215px);overflow-y:auto}
+#steps ol{margin:6px 0;padding-left:20px}#steps li{margin-bottom:7px}#steps li span{display:block;font-weight:400;margin-top:2px}
+#steps li.cur{font-weight:700;color:var(--acc)}#steps li.cur span{color:var(--ink)}#steps li.done{color:var(--mut)}
+#tmsg{margin-top:8px;color:var(--acc);min-height:1.2em;font-weight:700;font-size:12px}
+#status{top:calc(12px + env(safe-area-inset-top,0px));right:12px;width:280px;max-height:calc(100vh - 215px);overflow:auto}
+.tub{display:grid;grid-template-columns:auto 1fr auto;gap:1px 10px;font-size:11px;font-variant-numeric:tabular-nums;margin-bottom:6px}
+.tub .ok{color:var(--acc)}.tub .no{color:var(--mut)}
+#kit{font-size:11px;color:var(--mut);margin:4px 0 10px;line-height:1.5}
+#cnt{right:12px;top:calc(12px + env(safe-area-inset-top,0px));width:min(330px,calc(100vw - 24px));display:none;max-height:calc(100vh - 150px);overflow-y:auto}
+body.cnt #cnt{display:block}body.cnt #status{display:none}
+#mbar,#tabs{display:none}
+#cc{width:100%;max-width:100%;aspect-ratio:1;border-radius:50%;background:#111;display:block;cursor:crosshair;border:6px solid #222;box-sizing:border-box;touch-action:manipulation}
+.row{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0}
+#cnt button{padding:5px 8px;font-size:11px}
+#ans{flex:1;min-width:0;font:inherit;font-size:13px;padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink)}
+#ctl{bottom:calc(12px + env(safe-area-inset-bottom,0px));left:12px;right:12px;max-width:1040px;margin:0 auto;display:flex;flex-wrap:wrap;gap:7px;justify-content:center}
+button{font:inherit;color:var(--ink);background:rgba(127,127,127,.08);border:1px solid var(--line);border-radius:6px;padding:7px 11px;cursor:pointer;font-size:12px;font-weight:700}
+button:hover:not(:disabled){border-color:var(--acc)}button.cta{border-color:var(--acc);color:var(--acc);background:rgba(111,224,197,.12)}button.on{background:var(--acc);color:#04201a}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+/* tablets and narrow desktop windows */
+@media (min-width:761px) and (max-width:1100px){#steps{width:262px}#status,#cnt{width:300px}#ctl{gap:5px}#ctl button{padding:6px 9px;font-size:11px}}
+/* phones and narrow panes: 3D bench + bottom (portrait) or side (landscape) sheet with tabs */
+@media (max-width:760px) and (orientation:portrait),(max-height:540px) and (orientation:landscape){
+ #sheet{position:fixed;display:flex;flex-direction:column;background:var(--panel);backdrop-filter:blur(8px);z-index:2}
+ #sheet>.panel{position:static;inset:auto;width:auto;max-width:none;max-height:none;margin:0;border:0;border-radius:0;background:transparent;backdrop-filter:none}
+ #mbar{display:block;order:0;flex:none;padding:8px 14px 6px;border-bottom:1px solid var(--line)}
+ #mstep{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+ #mmsg{font-size:12.5px;font-weight:700;color:var(--acc);min-height:1.3em;line-height:1.35}
+ #ctl{order:1;flex:none;flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;gap:6px;padding:8px 14px;border-bottom:1px solid var(--line);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+ #ctl::-webkit-scrollbar{display:none}#ctl button{flex:none;min-height:40px;font-size:12px}
+ #tabs{display:flex;order:2;flex:none;border-bottom:1px solid var(--line)}
+ #tabs button{flex:1;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;padding:10px 6px;color:var(--mut);min-height:42px}
+ #tabs button.on{color:var(--acc);border-bottom-color:var(--acc);background:transparent}#tabs button:disabled{opacity:.4;cursor:default}
+ #steps,#status,#cnt,body.cnt #cnt,body.cnt #status{order:3;display:none;flex:1;min-height:0;overflow-y:auto;padding:10px 14px}
+ body.tab-steps #steps,body.tab-status #status,body.tab-cnt #cnt{display:block}
+ #steps h1,#steps .lead,#steps #tmsg{display:none}
+ #cc{max-width:300px;margin:0 auto}
+}
+@media (max-width:760px) and (orientation:portrait){
+ canvas#scene{inset:auto;top:0;left:0;width:100%;height:44vh;height:44dvh}
+ #sheet{left:0;right:0;bottom:0;top:44vh;top:44dvh;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+ body.tab-cnt canvas#scene{height:26vh;height:26dvh}body.tab-cnt #sheet{top:26vh;top:26dvh}
+}
+@media (max-height:540px) and (orientation:landscape){
+ canvas#scene{inset:auto;top:0;left:0;width:56%;height:100%}
+ #sheet{top:0;bottom:0;right:0;width:44%;border-left:1px solid var(--line);padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) 0}
+}
+/* ---- first-person game HUD ---- */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:1}
+body:not(.fps) #hud>*{display:none}
+#cross{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px}
+#cross::before,#cross::after{content:'';position:absolute;background:rgba(255,255,255,.9);box-shadow:0 0 2px rgba(0,0,0,.85)}
+#cross::before{left:10px;top:3px;width:2px;height:16px}#cross::after{top:10px;left:3px;height:2px;width:16px}
+#cross.aim::before,#cross.aim::after{background:#6fe0c5}
+#prompt{position:absolute;left:50%;top:calc(50% + 22px);transform:translateX(-50%);max-width:calc(100% - 24px);background:var(--panel);border:1px solid var(--line);padding:5px 10px;border-radius:6px;font-weight:700;font-size:13px;display:none;text-align:center}
+#obj{position:absolute;left:12px;top:calc(12px + env(safe-area-inset-top,0px));width:min(340px,calc(100% - 24px));background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:12px;line-height:1.4}
+#obj b{display:block;color:var(--acc);text-transform:uppercase;letter-spacing:.4px}#obj span{display:block;color:var(--mut);margin-top:2px}
+#hmsg{margin-top:6px;font-weight:700;color:var(--ink)}body.nb #obj{display:none}
+#score{position:absolute;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 6px 5px 12px;font-weight:700;font-variant-numeric:tabular-nums;font-size:13px;pointer-events:auto;white-space:nowrap}
+#score button{padding:4px 8px;font-size:11px}#spts{color:var(--acc)}
+#joy,#useB,#zoomB{display:none}
+body.touch #joy,body.touch #useB,body.touch #zoomB{display:block}
+#joy{position:absolute;left:16px;bottom:16px;width:108px;height:108px;border-radius:50%;background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.4);pointer-events:auto;touch-action:none}
+#knob{position:absolute;left:32px;top:32px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.7)}
+#useB{position:absolute;right:16px;bottom:22px;width:74px;height:74px;border-radius:50%;pointer-events:auto;font-size:15px;background:var(--acc);color:#04201a;border:0}
+#zoomB{position:absolute;right:100px;bottom:34px;pointer-events:auto}
+body.touch #score kbd{display:none}
+body.touch #score button{min-height:40px;padding:6px 11px;font-size:12.5px}body.touch #score{padding:4px 5px 4px 12px}
+body.touch #zoomB{min-height:46px;min-width:64px}body.mob #modeB .lg{display:none}
+body.filling #useB,body.filling #zoomB{display:none!important}
+body.touch:not(.mob) #score{left:auto;right:12px;transform:none}
+#toast{position:absolute;left:50%;top:calc(50% - 64px);transform:translateX(-50%);font-weight:700;font-size:20px;opacity:0;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+#toast.go{animation:tst 1.2s ease-out}
+@keyframes tst{0%{opacity:0;transform:translate(-50%,8px)}15%{opacity:1}100%{opacity:0;transform:translate(-50%,-28px)}}
+@media (prefers-reduced-motion:reduce){#toast.go{animation:none;opacity:1}}
+body.fps:not(.locked) canvas#scene{cursor:crosshair}
+body.fps #view,body.fps #fpB{display:none}
+body.fps:not(.nb):not(.mob) #steps,body.fps:not(.nb):not(.mob) #status,body.fps:not(.nb):not(.mob) #ctl{display:none}
+body.mob #obj{display:none}body.mob #score{font-size:12px;gap:7px;padding-left:10px}body.mob #slv{display:none}
+kbd{font:inherit;font-size:11px;font-weight:700;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:rgba(127,127,127,.12)}
+.ovl{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(5,10,12,.55);backdrop-filter:blur(3px)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;width:min(460px,100%);max-height:calc(100% - 32px);overflow:auto;font-size:13px;line-height:1.5}
+.card h1{font-size:20px;margin:0 0 8px}.card p{margin:0 0 10px;color:var(--mut)}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:12.5px;margin:10px 0 16px}
+.ovl[hidden]{display:none!important}.keys .k{white-space:nowrap;display:flex;gap:3px;align-items:flex-start}
+.tc{display:none}body.touch .tc{display:contents}body.touch .dk{display:none}.dk{display:contents}
+#rStars{font-size:36px;color:#f2b632;letter-spacing:4px;line-height:1.1}#rStars span{color:var(--line)}
+#rStats{margin:8px 0 14px}
+@media (max-width:760px) and (orientation:portrait){#hud{inset:auto;top:0;left:0;width:100%;height:44vh;height:44dvh}body.tab-cnt #hud{height:26vh;height:26dvh}body.tab-cnt #joy,body.tab-cnt #useB,body.tab-cnt #zoomB{display:none}}
+@media (max-height:540px) and (orientation:landscape){#hud{inset:auto;top:0;left:0;width:56%;height:100%}}
+/* phones during play: full-screen bench, panel folded into a strip until the notebook is opened */
+@media (max-width:760px) and (orientation:portrait),(max-height:540px) and (orientation:landscape){
+ body.fps:not(.nb) canvas#scene,body.fps:not(.nb) #hud{inset:0;top:0;left:0;width:100%;height:100%}
+ body.fps:not(.nb) #sheet{top:calc(68px + env(safe-area-inset-top,0px));left:50%;right:auto;bottom:auto;width:min(440px,calc(100% - 24px));transform:translateX(-50%);border:1px solid var(--line);border-radius:8px;padding:0;cursor:pointer}
+ body.fps:not(.nb) #sheet>:not(#mbar){display:none!important}
+ body.fps:not(.nb) #mbar{border-bottom:0;padding:6px 12px}
+ body.fps:not(.nb) #mmsg{font-size:12px}
+ body.fps:not(.nb) #mstep::after{content:' · tap for notebook';text-transform:none;letter-spacing:0}
+}
+/* ---- learning game: levels, quiz, badges ---- */
+.lvls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 6px}
+.lvl{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px;min-width:0}
+.lvl b{font-size:14px}.lvl small{color:var(--mut);font-weight:400;font-size:11px}.lvl .st{color:#f2b632;letter-spacing:1px;font-size:13px}.lvl .st i{color:var(--line);font-style:normal}
+.lvl.on{border:2px solid var(--acc);padding:9px;background:rgba(111,224,197,.12)}
+#lvDesc{color:var(--ink);font-size:12.5px;min-height:2.6em;margin:4px 0 12px}
+.bdg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0 4px}
+.bd{border:1px solid var(--line);border-radius:8px;padding:6px 4px;text-align:center;font-size:10.5px;line-height:1.25;color:var(--mut);opacity:.55}
+.bd i{display:block;font-style:normal;font-size:18px;line-height:1.2;filter:grayscale(1)}
+.bd.got{opacity:1;color:var(--ink);border-color:var(--acc);background:rgba(111,224,197,.1)}.bd.got i{filter:none}
+.bd.new{animation:pop .6s ease-out}@keyframes pop{0%{transform:scale(.6)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
+#pWhere{font-size:11px;color:var(--mut);margin:2px 0 12px}
+details.ctl summary{cursor:pointer;font-weight:700;font-size:12px;color:var(--acc);margin-bottom:4px}
+#qTag{font-size:11px;font-weight:700;color:var(--acc);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+#qText{font-size:17px!important;line-height:1.35;text-wrap:balance}
+#qOpts{display:grid;gap:7px;margin:12px 0}
+#qOpts button{text-align:left;font-weight:400;font-size:13px;padding:10px 12px;line-height:1.35}
+#qOpts button.ok{border-color:#2fa36b;background:rgba(47,163,107,.18);font-weight:700}#qOpts button.bad{border-color:var(--hot);background:rgba(228,87,46,.15)}
+#qExp{font-size:12.5px;line-height:1.5;margin-bottom:10px}#qExp b{display:block;margin-bottom:2px}
+#rBadges .bdg{grid-template-columns:repeat(auto-fill,minmax(88px,1fr))}
+#hintB,#hintC{display:none}body.lv1 #hintB,body.lv1 #hintC{display:inline-block}
+body.lv2 #ff,body.lv2 #auto{display:none}
+body.lv2 #steps li span,body.lv2 #obj span{display:none}
+#slv{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)}
+@media (max-width:520px){.lvls{grid-template-columns:1fr}.lvl{flex-direction:row;align-items:center;gap:8px;flex-wrap:wrap}.lvl small{flex-basis:100%}.bdg{grid-template-columns:repeat(4,1fr)}}
+@media (prefers-reduced-motion:reduce){.bd.new{animation:none}}
+/* ---- UX: objective arrow, controls hint, phone text sizes ---- */
+#oarr{position:absolute;width:0;height:0;border-left:24px solid var(--acc);border-top:14px solid transparent;border-bottom:14px solid transparent;filter:drop-shadow(0 1px 3px rgba(0,0,0,.65));display:none;pointer-events:none}
+#chint{position:absolute;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:max-content;max-width:calc(100% - 24px);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:12.5px;line-height:1.5;text-align:center;opacity:0;transition:opacity .5s;pointer-events:none}
+#chint.show{opacity:1}body.touch #chint{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+@media (prefers-reduced-motion:reduce){#chint{transition:none}}
+body.mob #comp,body.mob #comp2,body.mob #cntt{font-size:12.5px!important}
+body.mob .tub,body.mob #kit,body.mob .lead,body.mob .itab,body.mob .sst,body.mob #steps li{font-size:12.5px}
+body.mob .itab th{font-size:11.5px}
+.lit{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 12px;font-size:12px;font-weight:700}.lit span{color:var(--mut);margin-right:4px}.lit button{padding:6px 12px}.lit button.on{background:var(--acc);color:#04201a;border-color:var(--acc)}
+</style>
+<canvas id="scene" aria-label="3D microbiology bench"></canvas>
+<div id="hud"><div id="cross"></div><div id="prompt"></div><div id="obj"><div id="ostep"></div><div id="hmsg"></div></div>
+<div id="score"><span id="slv"></span><span id="stime">00:00</span><span id="spts">0 pts</span><button id="hintB">Hint <kbd>H</kbd></button><button id="nbB">Notebook <kbd>Tab</kbd></button><button id="modeB">Classic view</button></div>
+<div id="oarr" aria-hidden="true"></div><div id="chint" role="status"></div><div id="joy" aria-label="Move"><div id="knob"></div></div><button id="zoomB">Zoom</button><button id="useB">Use</button><div id="toast"></div></div>
+<div id="intro" class="ovl"><div class="card" style="width:min(560px,100%)"><h1>Serial Dilution: Lab Shift</h1>
+<p>Run a real microbiology assay in first person: dilute an <i>E. coli</i> culture ten-fold to 10<sup>−7</sup>, spread-plate, incubate, count colonies and report CFU/mL. Questions pop up along the way. Good technique and right answers score points; slips cost points.</p>
+<div class="lvls" id="lvls" role="radiogroup" aria-label="Level"></div><div id="lvDesc"></div>
+<div class="lit" role="radiogroup" aria-label="Brightness"><span>Brightness</span><button data-l="0">Dim</button><button data-l="1">Normal</button><button data-l="2">Bright</button></div><h2>Badges</h2><div class="bdg" id="badges"></div><div id="pWhere"></div>
+<details class="ctl"><summary>Controls</summary><div class="keys"><span class="dk"><span class="k"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>Walk (hold <kbd>Shift</kbd> to walk faster)</span><span class="k"><kbd>Mouse</kbd></span><span>Look around (click the bench to capture the mouse, <kbd>Esc</kbd> to release)</span><span class="k"><kbd>E</kbd> or click</span><span>Use the equipment under the crosshair</span><span class="k"><kbd>Z</kbd> or right-click</span><span>Lean in for a close look</span><span class="k"><kbd>V</kbd></span><span>Change the pipette volume</span><span class="k"><kbd>H</kbd></span><span>Hint (Practice only, costs 25 points)</span><span class="k"><kbd>Tab</kbd></span><span>Open the lab notebook</span></span><span class="tc"><span class="k"><b>Left stick</b></span><span>Walk</span><span class="k"><b>Drag</b></span><span>Look around</span><span class="k"><b>Tap or Use</b></span><span>Use the equipment you tap, or the one under the crosshair</span><span class="k"><b>Zoom</b></span><span>Lean in for a close look</span></span></div></details>
+<div class="row" style="margin-top:10px"><button id="resumeB" class="cta" hidden></button><button id="startB" class="cta">Start shift</button><button id="classicB">Play in classic view</button></div></div></div>
+<div id="quiz" class="ovl" hidden><div class="card" role="dialog" aria-labelledby="qText"><div id="qTag"></div><h1 id="qText"></h1><div id="qOpts"></div><div id="qExp" aria-live="polite"></div><div class="row"><button id="qGo" class="cta" hidden>Back to the bench</button></div></div></div>
+<div id="result" class="ovl" hidden><div class="card"><h1 id="rTitle"></h1><div id="rStars"></div><div id="rStats"></div><div id="rBadges"></div><div class="row"><button id="nextB" class="cta">Next level</button><button id="againB">Play again</button><button id="menuB">Levels &amp; badges</button><button id="reviewB">Review record</button></div></div></div>
+<div id="sheet"><div id="mbar" aria-hidden="true"><div id="mstep"></div><div id="mmsg"></div></div>
+<div id="tabs" role="tablist"><button data-t="steps" role="tab">Procedure</button><button data-t="status" role="tab">Tubes &amp; QC</button><button data-t="cnt" id="tcnt" role="tab">Counter</button></div>
+<div id="steps" class="panel"><h1>Serial Dilution &amp; Plate Count</h1>
+<p class="lead">Ten-fold dilutions of an <i>E. coli</i> broth (1 mL into 9 mL saline), spread 0.1 mL of 10<sup>−4</sup> to 10<sup>−7</sup> in duplicate, incubate, count plates with 30–300 colonies and calculate CFU/mL.</p>
+<ol id="olist"></ol><div id="tmsg" role="status"></div></div>
+<div id="status" class="panel"><h2>Tubes</h2><div id="tubes" class="tub"></div><div id="kit"></div><h2>Batch record &amp; QC</h2><div id="comp" style="font-size:11px;line-height:1.5"></div></div>
+<div id="cnt" class="panel"><h2 id="cnth">Colony counter</h2><canvas id="cc" width="300" height="300"></canvas>
+<div class="row" id="pbtn"></div>
+<div class="row"><button id="rec">Record count</button><button id="tn">TNTC</button><button id="tf">TFTC</button><button id="clr">Clear marks</button><button id="auto">Count for me</button></div>
+<div id="cntt" style="font-size:11px;line-height:1.5"></div>
+<h2 style="margin-top:10px">Result</h2><div style="font-size:11px;color:var(--mut)">CFU/mL = colonies ÷ (0.1 mL × dilution). Average the countable plates (30–300).</div>
+<div class="row"><input id="ans" placeholder="e.g. 4.5 x 10^8" aria-label="CFU per mL" autocomplete="off"><button id="sub" class="cta">Submit</button></div>
+<h2 style="margin-top:10px">Batch record &amp; QC</h2><div id="comp2" style="font-size:11px;line-height:1.5"></div></div>
+<div id="ctl" class="panel">
+<button id="b1">1. Label</button><button id="bvx">Vortex</button><button id="btip">Fresh tip</button><button id="btr">Transfer</button><button id="bpv">Pipette: 1000 µL</button><button id="binoc">Inoculate plate</button><button id="bfl">Flame spreader</button><button id="bspr">Spread</button><button id="binc">Incubate</button><button id="bcnt">Count colonies</button><button id="hintC">Hint (−25)</button><button id="ff">Finish step ⏩</button><button id="speed">Sim speed: 5×</button><button id="view">View: Overview</button><button id="fpB">First person</button><button id="litB">Light: Normal</button><button id="reset">Reset</button></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),BT=.9,TAU=Math.PI*2,PI=Math.PI,cl=(v,a,b)=>Math.max(a,Math.min(b,v)),lerp=(a,b,t)=>a+(b-a)*t,sm=t=>{t=cl(t,0,1);return t*t*(3-2*t)},clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v)),wn=(t,a,b)=>cl((t-a)/(b-a),0,1),mix=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
+const renderer=new THREE.WebGLRenderer({canvas:$('scene'),antialias:true,powerPreference:'high-performance'});
+let pr=Math.min(devicePixelRatio,1.5),fAcc=0,fN=0,shInt=3,fc=0;renderer.setPixelRatio(pr);
+renderer.shadowMap.enabled=true;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.8;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xc9d1d8);const cam=new THREE.PerspectiveCamera(40,1,.02,60);
+const pm=new THREE.PMREMGenerator(renderer),es=new THREE.Scene();es.background=new THREE.Color(0x56606a);
+const EB2=(w,h,c,x,y,z,rx,ry)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({side:2}));m.material.color.setScalar(c);m.position.set(x,y,z);m.rotation.set(rx,ry,0);es.add(m)};
+for(let i=-2;i<=2;i++)EB2(.35,6,5,i*1.6,5,0,PI/2,0);EB2(7,3.2,2.2,-6,2.2,0,0,PI/2);for(let i=-3;i<=3;i++)EB2(.12,3.2,.15,-5.95,2.2,i,0,PI/2);
+EB2(30,30,.3,0,-1.5,0,-PI/2,0);EB2(16,6,.7,0,3,-7,0,0);EB2(4,2.5,2.6,6,2,2,0,-PI/2);EB2(14,5,.5,0,2,8,0,0);
+const envMap=pm.fromScene(es,.04).texture;scene.environment=envMap;
+const ENVK=.6,E=(o,i)=>Object.assign(o,{envMap,envMapIntensity:i*ENVK});
+const S=(c,r,m,i=.7)=>new THREE.MeshStandardMaterial(E({color:c,roughness:r,metalness:m},i));
+const G=(c,op,i=1.3)=>new THREE.MeshPhysicalMaterial(E({color:c,roughness:.03,metalness:0,transparent:true,opacity:op,side:2,depthWrite:false,clearcoat:1,clearcoatRoughness:.02,reflectivity:.9},i));
+const steel=S(0xc2c6ca,.2,1,1.4),brushed=S(0x9a9fa4,.6,1,1.1),white=S(0xeceeed,.38,.05,.5),dark=S(0x1b1d20,.45,.2,.3),rubber=S(0x0e0e0e,.85,0,.1);
+const add=(g,m,p,x=0,y=0,z=0,sh=1)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=!!sh;p.add(o);return o};
+const B=(w,h,d,m,p,x,y,z,sh)=>add(new THREE.BoxGeometry(w,h,d),m,p,x,y,z,sh);
+const C=(r,h,m,p,x,y,z,sh,s=32)=>add(new THREE.CylinderGeometry(r,r,h,s),m,p,x,y,z,sh);
+const V=(x,y,z)=>new THREE.Vector3(x,y,z),V2=(a,b)=>new THREE.Vector2(a,b);
+const cvs=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=8;return{c,x:c.getContext('2d'),t}};
+const plane=(w,h,t,p,x,y,z)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:t,toneMapped:false}));m.position.set(x,y,z);p.add(m);return m};
+const txt=(w,h,s,col,bg,f)=>{const k=cvs(w,h);k.x.fillStyle=bg;k.x.fillRect(0,0,w,h);k.x.fillStyle=col;k.x.font=f;k.x.textAlign='center';k.x.textBaseline='middle';const fs=parseInt(f.match(/\d+/)[0]);s.split('\n').forEach((l,i,a)=>k.x.fillText(l,w/2,h/2+(i-(a.length-1)/2)*fs*1.2));return k.t};
+const nz=cvs(256,256);for(let y=0;y<256;y++){const v=110+Math.random()*100|0;nz.x.fillStyle=`rgb(${v},${v},${v})`;nz.x.fillRect(0,y,256,1)}
+nz.t.encoding=THREE.LinearEncoding;nz.t.wrapS=nz.t.wrapT=THREE.RepeatWrapping;brushed.roughnessMap=nz.t;
+const ribK=cvs(64,8);for(let i=0;i<64;i+=4){ribK.x.fillStyle='#fff';ribK.x.fillRect(i,0,2,8);ribK.x.fillStyle='#666';ribK.x.fillRect(i+2,0,2,8)}ribK.t.encoding=THREE.LinearEncoding;ribK.t.wrapS=THREE.RepeatWrapping;ribK.t.repeat.set(10,1);
+const capMat=c=>{const m=S(c,.45,0,.5);m.bumpMap=ribK.t;m.bumpScale=.0012;return m};
+function decal(r,h,y,ticks,col,p,ry=0,arc=1.2,fs=20){const W=128,H=512,k=cvs(W,H),x=k.x;x.strokeStyle=x.fillStyle=col;x.font=`bold ${fs}px sans-serif`;x.textBaseline='middle';
+ ticks.forEach(t=>{const py=H*(1-t[0]);x.lineWidth=t[1]?4:2.5;x.beginPath();x.moveTo(t[1]?14:30,py);x.lineTo(56,py);x.stroke();if(t[2])x.fillText(t[2],62,py)});
+ const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,24,1,true,-arc/2,arc),new THREE.MeshBasicMaterial({map:k.t,transparent:true,depthWrite:false,toneMapped:false}));m.position.y=y+h/2;m.rotation.y=ry;m.renderOrder=6;p.add(m);return m}
+function wrapLabel(r,h,y,tex,p,arc=1.5,ry=0){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,24,1,true,-arc/2,arc),new THREE.MeshStandardMaterial(E({map:tex,roughness:.72},.3)));m.position.y=y;m.rotation.y=ry;m.renderOrder=5;p.add(m);return m}
+function rbottle(x,z,h,glass,cap,lab){const g=new THREE.Group();g.position.set(x,0,z);A.add(g);const r=h*.33;add(new THREE.LatheGeometry([V2(0,0),V2(r,0),V2(r*1.04,.006),V2(r*1.04,h*.72),V2(r*.6,h*.86),V2(r*.5,h*.9),V2(r*.5,h)],28),glass,g,0,0,0,0).renderOrder=3;C(r*.56,h*.12,capMat(cap),g,0,h*1.04,0,1,24);if(lab)wrapLabel(r*1.05,h*.3,h*.38,lab,g,1.5);return g}
+function bhTex(){const k=cvs(128,128),x=k.x;x.fillStyle='#f4c400';x.fillRect(0,0,128,128);x.strokeStyle='#111';x.lineWidth=6;for(let i=0;i<3;i++){const a=i*TAU/3-PI/2;x.beginPath();x.arc(64+Math.cos(a)*15,54+Math.sin(a)*15,16,0,TAU);x.stroke()}x.lineWidth=5;x.beginPath();x.arc(64,54,11,0,TAU);x.stroke();x.fillStyle='#111';x.font='bold 15px sans-serif';x.textAlign='center';x.fillText('BIOHAZARD',64,110);return k.t}
+function seg(m,p,q,r){const d=q.clone().sub(p),l=d.length();m.position.copy(p).addScaledVector(d,.5);m.scale.set(r,l,r);m.quaternion.setFromUnitVectors(V(0,1,0),d.normalize())}
+
+/* room + bench */
+const ft=cvs(256,256);ft.x.fillStyle='#c9cdd0';ft.x.fillRect(0,0,256,256);ft.x.strokeStyle='#aab0b5';ft.x.lineWidth=4;ft.x.strokeRect(0,0,256,256);ft.t.wrapS=ft.t.wrapT=THREE.RepeatWrapping;ft.t.repeat.set(20,20);
+add(new THREE.PlaneGeometry(20,20),new THREE.MeshStandardMaterial(E({map:ft.t,roughness:.35},.3)),scene,0,-.05,0).rotation.x=-PI/2;
+const wallM=S(0xcfd6dc,.9,0,.1);B(20,6,.1,wallM,scene,0,3,-3);B(.1,6,20,wallM,scene,-10,3,0);B(.1,6,20,wallM,scene,10,3,0);
+const bk=cvs(256,256);bk.x.fillStyle='#1b1d1f';bk.x.fillRect(0,0,256,256);for(let i=0;i<3000;i++){const v=90+Math.random()*130|0;bk.x.fillStyle=`rgba(${v},${v},${v},.35)`;bk.x.fillRect(Math.random()*256,Math.random()*256,1.5,1.5)}bk.t.wrapS=bk.t.wrapT=THREE.RepeatWrapping;bk.t.repeat.set(5,2);
+const BENCHM=new THREE.MeshPhysicalMaterial(E({map:bk.t,roughness:.2,metalness:0,clearcoat:.7,clearcoatRoughness:.1},.6));B(4.6,.06,1.75,BENCHM,scene,.3,BT,-2.075);B(4.4,.85,1.65,S(0xf2f3f2,.5,0,.1),scene,.3,BT-.455,-2.075);B(4.4,.02,1.7,steel,scene,.3,BT-.03,-2.075);
+for(let i=0;i<5;i++){B(.85,.78,.01,S(0xe8eae9,.5,0,.1),scene,-1.7+i*.95,BT-.45,-1.245);B(.25,.02,.02,steel,scene,-1.7+i*.95,BT-.2,-1.24)}
+const A=new THREE.Group();A.position.set(0,BT+.03,-1.8);scene.add(A);
+
+/* drops */
+const PN=120,pI=new THREE.InstancedMesh(new THREE.SphereGeometry(1,8,6),new THREE.MeshPhysicalMaterial(E({color:0xffffff,roughness:.05,clearcoat:1,transparent:true,opacity:.8},1.2)),PN),P=[],po=new THREE.Object3D(),pc=new THREE.Color();pI.frustumCulled=false;A.add(pI);
+for(let i=0;i<PN;i++){P.push({on:0,x:0,y:0,z:0,vy:0,r:.001,fl:0,age:0});po.scale.setScalar(0);po.updateMatrix();pI.setMatrixAt(i,po.matrix);pI.setColorAt(i,pc.setRGB(1,1,1))}
+function emit(x,y,z,c,r,fl){const i=P.findIndex(q=>!q.on);if(i<0)return;Object.assign(P[i],{on:1,x,y,z,vy:0,r,fl,age:0});pI.setColorAt(i,pc.setRGB(c[0],c[1],c[2]));pI.instanceColor.needsUpdate=true}
+function stepP(dt){P.forEach((p,i)=>{if(p.on){p.age+=dt;p.vy-=9.81*dt;p.y+=p.vy*dt;if(p.y<p.fl||p.age>3)p.on=0}po.position.set(p.x,p.y,p.z);po.scale.setScalar(p.on?p.r:0);po.updateMatrix();pI.setMatrixAt(i,po.matrix)});pI.instanceMatrix.needsUpdate=true}
+
+/* ===== tube rack: culture + seven 9 mL saline blanks ===== */
+const TX=i=>-.41+i*.046,TZ=.18,TY=.012,rackM=S(0x2f6fb5,.45,0,.4),CAPH=V(0,.113,0),CAPAW=i=>V(TX(i),.008,TZ+.075);
+B(.4,.012,.075,rackM,A,-.25,.006,TZ);B(.4,.006,.06,rackM,A,-.25,.07,TZ);B(.006,.07,.075,rackM,A,-.453,.035,TZ);B(.006,.07,.075,rackM,A,-.047,.035,TZ);
+const tubeGeo=new THREE.LatheGeometry([V2(0,.0005),V2(.0045,.001),V2(.0068,.0035),V2(.008,.008),V2(.008,.104),V2(.0086,.105),V2(.0086,.107),V2(.0079,.107)],24);
+const SAL=[.9,.95,.98],BROTH=[.86,.74,.47],TUBES=[];
+for(let i=0;i<8;i++){const g=new THREE.Group();g.position.set(TX(i),TY,TZ);A.add(g);add(tubeGeo,G(0xffffff,.28,1.6),g,0,0,0,0).renderOrder=3;
+ const liq=add(new THREE.CylinderGeometry(.0073,.0073,1,20),new THREE.MeshPhysicalMaterial(E({color:0xffffff,roughness:.1,transparent:true,opacity:.4,depthWrite:false,clearcoat:.5},.6)),g,0,.03,0,0);liq.renderOrder=2;
+ const vtx=add(new THREE.ConeGeometry(.0066,1,20,1,true).rotateX(PI).translate(0,-.5,0),new THREE.MeshPhysicalMaterial(E({color:0xffffff,roughness:.05,transparent:true,opacity:.45,side:2,depthWrite:false},1)),g,0,.05,0,0);vtx.visible=false;vtx.renderOrder=3;
+ const cap=C(.0095,.016,capMat(i?0x2f9e5b:0xe07a1f),g,0,.113,0,1,32);
+ const lk=cvs(64,160);wrapLabel(.0083,.034,.072,lk.t,g,1.7);TUBES.push({g,liq,vtx,cap,lk})}
+
+/* vortex mixer */
+const VX=V(-.62,0,.12),vxM=S(0xe6e8ea,.4,.1,.5);B(.12,.06,.15,vxM,A,VX.x,.03,VX.z);add(new THREE.CylinderGeometry(.04,.05,.02,32),vxM,A,VX.x,.07,VX.z-.01);
+const vxCup=add(new THREE.CylinderGeometry(.022,.018,.014,24),rubber,A,VX.x,.087,VX.z-.01);const vxKnob=C(.012,.012,capMat(0x2a2d31),A,VX.x,.032,VX.z+.081,1,24);vxKnob.rotation.x=PI/2;B(.0025,.002,.007,white,vxKnob,0,.0066,-.004);
+plane(.06,.014,txt(160,36,'VORTEX · 0–3000 rpm','#2b3036','#e6e8ea','bold 15px sans-serif'),A,VX.x,.048,VX.z+.0752);
+
+/* ===== P1000 micropipette, hand, stand, tip box, waste ===== */
+const pip=new THREE.Group();A.add(pip);const tipM=new THREE.MeshPhysicalMaterial(E({color:0x5b9be8,roughness:.25,transparent:true,opacity:.5,depthWrite:false,side:2,clearcoat:.5},1));
+const tipGeo=new THREE.LatheGeometry([V2(.0004,0),V2(.0009,.002),V2(.0044,.066),V2(.0052,.068),V2(.0052,.074)],18);
+const pTip=add(tipGeo,tipM,pip,0,0,0,0);pTip.renderOrder=4;pTip.visible=false;
+const tipLiq=add(new THREE.ConeGeometry(.0022,.034,14).rotateX(PI).translate(0,.017,0),new THREE.MeshPhysicalMaterial(E({color:0xe8e0c8,roughness:.1,transparent:true,opacity:.8,depthWrite:false},.6)),pip,0,.001,0,0);tipLiq.visible=false;tipLiq.renderOrder=3;
+const pW=S(0xe9ecef,.35,0,.5),pG=S(0x9aa3ad,.4,.3,.6);
+add(new THREE.LatheGeometry([V2(.0034,.073),V2(.0045,.09),V2(.0062,.118),V2(.0062,.124),V2(0,.124)],18),pW,pip,0,0,0);C(.0082,.016,pG,pip,0,.128,0,1,20);C(.0145,.09,pW,pip,0,.181,0,1,28);B(.008,.034,.016,pG,pip,0,.205,-.019);
+const pvK=cvs(32,96);plane(.0075,.022,pvK.t,pip,0,.165,.0147);
+const plg=new THREE.Group();plg.position.y=.226;pip.add(plg);C(.0032,.03,steel,plg,0,.015,0,1,12);C(.0095,.012,S(0x1f63c6,.4,0,.5),plg,0,.034,0,1,24);
+const ejB=C(.004,.022,pG,pip,.0105,.236,.004,1,12);
+const gl=new THREE.MeshStandardMaterial(E({color:0x6a4fc0,roughness:.55},.4)),hand=new THREE.Group();pip.add(hand);hand.visible=false;
+for(let i=0;i<4;i++){const r=add(new THREE.TorusGeometry(.0175,.0055,8,20,PI*1.2),gl,hand,0,.15+i*.0125,0,1);r.rotation.order='YXZ';r.rotation.x=PI/2;r.rotation.y=PI+.3}
+B(.045,.056,.014,gl,hand,0,.18,-.024);const fa=new THREE.Group();fa.position.set(0,.18,-.032);fa.rotation.x=-1.0;hand.add(fa);C(.02,.1,gl,fa,0,.05,0,1,16);C(.022,.06,white,fa,0,.13,0,1,16);C(.028,.3,white,fa,0,.31,0,1,16);
+const thumb=new THREE.Group();plg.add(thumb);thumb.visible=false;C(.0062,.04,gl,thumb,0,.052,-.012,1,12).rotation.x=.75;
+const PS=V(.1,0,-.32);B(.07,.01,.06,dark,A,PS.x,.005,PS.z);C(.005,.24,steel,A,PS.x,.125,PS.z-.022,1,12);B(.034,.006,.03,dark,A,PS.x,.24,PS.z-.008);
+const PIPR=V(PS.x,.014,PS.z+.008),HOV=V(-.02,.21,.05);
+function drawPV(){const x=pvK.x;x.fillStyle='#f4f6f4';x.fillRect(0,0,32,96);x.fillStyle='#111';x.font='bold 21px monospace';x.textAlign='center';x.textBaseline='middle';String(st.pv).padStart(4,'0').split('').forEach((d,i)=>x.fillText(d,16,13+i*23));pvK.t.needsUpdate=true}
+const TB=V(-.08,0,-.25);B(.086,.07,.122,S(0x1d2b45,.45,0,.4),A,TB.x,.035,TB.z);B(.084,.004,.12,S(0xf2f2f0,.5,0,.3),A,TB.x,.071,TB.z);
+const lidG=new THREE.Group();lidG.position.set(TB.x,.073,TB.z-.061);lidG.rotation.x=-1.95;A.add(lidG);add(new THREE.BoxGeometry(.088,.028,.124),new THREE.MeshPhysicalMaterial(E({color:0x3a7bd5,roughness:.3,transparent:true,opacity:.45,depthWrite:false},1)),lidG,0,.014,.062,0).renderOrder=4;
+plane(.06,.014,txt(160,36,'STERILE · 1000 µL','#fff','#1d2b45','bold 15px sans-serif'),A,TB.x,.04,TB.z+.0615);
+const TIPS=new THREE.InstancedMesh(tipGeo,tipM,96);TIPS.renderOrder=4;A.add(TIPS);const tpo=new THREE.Object3D(),tipXZ=n=>V(TB.x-.0315+(n%8)*.009,0,TB.z-.0495+Math.floor(n/8)*.009);
+function tipsReset(){for(let n=0;n<96;n++){const q=tipXZ(n);tpo.position.set(q.x,0,q.z);tpo.scale.setScalar(1);tpo.updateMatrix();TIPS.setMatrixAt(n,tpo.matrix)}TIPS.instanceMatrix.needsUpdate=true}
+function tipHide(n){tpo.position.set(0,-1,0);tpo.scale.setScalar(0);tpo.updateMatrix();TIPS.setMatrixAt(n,tpo.matrix);TIPS.instanceMatrix.needsUpdate=true}tipsReset();
+const TW=V(.2,0,.25);{const g=new THREE.Group();g.position.copy(TW);A.add(g);add(new THREE.CylinderGeometry(.036,.032,.1,28,1,true),new THREE.MeshStandardMaterial(E({color:0xd8401f,roughness:.5,side:2},.4)),g,0,.05,0);C(.032,.004,S(0xb83418,.5,0),g,0,.002,0,1,28);add(new THREE.TorusGeometry(.036,.004,8,32),S(0xf2a31b,.4,0),g,0,.1,0).rotation.x=PI/2;wrapLabel(.0352,.05,.055,bhTex(),g,1.3)}
+const ftip=add(tipGeo,tipM,A,0,0,0,0);ftip.visible=false;
+
+/* marker pen */
+const mk=new THREE.Group();A.add(mk);add(new THREE.ConeGeometry(.0028,.008,12).rotateX(PI).translate(0,.004,0),dark,mk,0,0,0);C(.0055,.11,S(0x111418,.4,0,.5),mk,0,.063,0,1,16);C(.0058,.02,S(0x1d4fd0,.4,0,.5),mk,0,.118,0,1,16);
+const MKR=V(-.02,.006,.34);mk.position.copy(MKR);mk.rotation.set(0,0,PI/2);
+
+/* ethanol beaker + L-shaped glass spreader */
+const EBK=V(.36,0,-.02),ebG=new THREE.Group();ebG.position.copy(EBK);A.add(ebG);add(new THREE.LatheGeometry([V2(0,0),V2(.031,0),V2(.032,.003),V2(.032,.088),V2(.035,.092)],32),G(0xffffff,.22,1.6),ebG,0,0,0,0).renderOrder=3;
+add(new THREE.CylinderGeometry(.0305,.0305,.05,28),G(0xe6f4ff,.35,.8),ebG,0,.026,0,0).renderOrder=2;decal(.0322,.08,.004,[[.25,1,'25'],[.5,1,'50'],[.75,1,'75']],'#ffffff',ebG,1.2,.9,22);wrapLabel(.0324,.026,.062,txt(128,52,'70% ETHANOL\nflammable','#0b4e8a','#ffffff','bold 15px sans-serif'),ebG,1.4);
+const spr=new THREE.Group();A.add(spr);const sprM=new THREE.MeshPhysicalMaterial(E({color:0xe8f4f6,roughness:.05,transparent:true,opacity:.65,clearcoat:1},1.3));
+add(new THREE.CylinderGeometry(.0024,.0024,.045,10).rotateZ(PI/2),sprM,spr,0,0,0,0);add(new THREE.TorusGeometry(.006,.0024,8,10,PI/2),sprM,spr,.0225,.006,0,0).rotation.z=-PI/2;add(new THREE.CylinderGeometry(.0024,.0024,.15,10),sprM,spr,.0285,.081,0,0);
+const sprFl=new THREE.Group();spr.add(sprFl);sprFl.visible=false;add(new THREE.ConeGeometry(.007,.035,12,1,true).translate(0,.0175,0),new THREE.MeshBasicMaterial({color:0x9ab8ff,transparent:true,opacity:.45,depthWrite:false,blending:THREE.AdditiveBlending,side:2}),sprFl,-.01,0,0,0);add(new THREE.ConeGeometry(.006,.03,12,1,true).translate(0,.015,0),new THREE.MeshBasicMaterial({color:0xffb860,transparent:true,opacity:.3,depthWrite:false,blending:THREE.AdditiveBlending,side:2}),sprFl,.01,0,0,0);
+const SPHOME=V(EBK.x-.008,.012,EBK.z),SPH=V(.45,.15,.14);function sprHome(){spr.position.copy(SPHOME);spr.rotation.set(0,0,.12)}sprHome();
+
+/* Bunsen burner, hose, gas tap */
+const BX=.55,BZ=-.3;C(.05,.012,steel,A,BX,.006,BZ,1,32);C(.035,.01,steel,A,BX,.015,BZ,1,32);C(.0085,.13,steel,A,BX,.08,BZ,1,20);C(.013,.02,brushed,A,BX,.04,BZ,1,20);
+const flO=new THREE.Mesh(new THREE.ConeGeometry(.011,.07,20,1,true),new THREE.MeshBasicMaterial({color:0x8aa2ff,transparent:true,opacity:.32,depthWrite:false,blending:THREE.AdditiveBlending,side:2}));flO.position.set(BX,.18,BZ);A.add(flO);
+const flI=new THREE.Mesh(new THREE.ConeGeometry(.0065,.035,16,1,true),new THREE.MeshBasicMaterial({color:0x7fc0ff,transparent:true,opacity:.8,depthWrite:false,blending:THREE.AdditiveBlending,side:2}));flI.position.set(BX,.168,BZ);A.add(flI);
+const flameL=new THREE.PointLight(0x9db8ff,.25,.7);flameL.position.set(BX,.19,BZ);A.add(flameL);
+C(.004,.03,brushed,A,BX-.03,.022,BZ,1,10).rotation.z=PI/2;add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(BX-.045,.022,BZ),V(BX-.1,.012,BZ+.02),V(BX-.17,.008,BZ-.08),V(BX-.2,.03,BZ-.22),V(BX-.2,.072,BZ-.255)]),48,.0055,10),S(0xc8501c,.55,0,.3),A,0,0,0);
+C(.012,.08,brushed,A,BX-.2,.04,BZ-.3,1,16);C(.006,.05,brushed,A,BX-.2,.072,BZ-.27,1,12).rotation.x=PI/2;B(.006,.034,.006,S(0xd8b020,.4,.2),A,BX-.2,.097,BZ-.3);
+
+/* turntable */
+const TT=V(.55,0,.2);C(.068,.016,S(0x3b4148,.45,.3,.6),A,TT.x,.008,TT.z,1,40);const ttP=new THREE.Group();ttP.position.set(TT.x,.016,TT.z);A.add(ttP);C(.062,.006,brushed,ttP,0,.003,0,1,40);B(.02,.003,.004,dark,ttP,.05,.0065,0);
+
+/* ===== petri dishes (plate count agar) ===== */
+const DIL=[7,7,6,6,5,5,4,4,0],PHOME=k=>V(.82+.11*(k%3),0,-.06+.11*Math.floor(k/3)),PL=[];
+const dishGeo=new THREE.LatheGeometry([V2(0,0),V2(.0447,0),V2(.0455,.001),V2(.0455,.0145),V2(.0447,.0145),V2(.0447,.0013),V2(0,.0013)],48);
+const lidGeo=new THREE.LatheGeometry([V2(0,.0165),V2(.0455,.0165),V2(.0463,.0157),V2(.0463,.004),V2(.0456,.004),V2(.0456,.0152),V2(0,.0158)],48);
+for(let k=0;k<9;k++){const g=new THREE.Group(),b=PHOME(k);g.position.copy(b);A.add(g);add(dishGeo,G(0xffffff,.3,1.7),g,0,0,0,0).renderOrder=3;
+ const ag=add(new THREE.CylinderGeometry(.0434,.0434,.0028,48),new THREE.MeshPhysicalMaterial(E({color:0xe2d29c,roughness:.25,clearcoat:.7},.8)),g,0,.0027,0,0);
+ const ct=cvs(256,256),top=add(new THREE.CircleGeometry(.0434,48).rotateX(-PI/2),new THREE.MeshBasicMaterial({map:ct.t,transparent:true,toneMapped:false}),g,0,.0043,0,0);
+ const drop=add(new THREE.SphereGeometry(.006,16,10),new THREE.MeshPhysicalMaterial(E({color:0xf2ecd8,roughness:.02,transparent:true,opacity:.7,clearcoat:1},1.3)),g,0,.0045,0,0);drop.visible=false;drop.renderOrder=3;
+ const lid=new THREE.Group(),lidM=G(0xffffff,.22,1.7);g.add(lid);add(lidGeo,lidM,lid,0,0,0,0).renderOrder=4;
+ const lk=cvs(128,40),lp=plane(.04,.0125,lk.t,g,0,.0075,.0458);lp.material.transparent=true;
+ PL.push({g,ag,top,ct,drop,lid,lidM,lk,base:b.clone(),lastHr:-9})}
+
+/* ===== incubator ===== */
+const tp=cvs(128,128);tp.x.fillStyle='#fff';tp.x.fillRect(0,0,128,128);tp.x.fillStyle='#000';for(let a=0;a<8;a++)for(let b=0;b<8;b++){tp.x.beginPath();tp.x.arc(8+a*16,8+b*16,4,0,TAU);tp.x.fill()}tp.t.encoding=THREE.LinearEncoding;
+const trM=S(0xb8bdc2,.3,1,1.2);trM.alphaMap=tp.t;trM.alphaTest=.5;trM.side=2;
+const IN=V(1.5,0,-.15),inc=new THREE.Group();inc.position.copy(IN);A.add(inc);const incM=S(0xe9ecee,.4,.2,.6);
+B(.46,.02,.42,incM,inc,0,.01,0);B(.46,.02,.42,incM,inc,0,.55,0);B(.02,.55,.42,incM,inc,-.22,.28,0);B(.02,.55,.42,incM,inc,.22,.28,0);B(.46,.55,.02,incM,inc,0,.28,-.2);B(.4,.004,.36,trM,inc,0,.16,0);B(.4,.004,.36,trM,inc,0,.34,0);B(.3,.02,.2,steel,inc,0,.03,0);add(new THREE.BoxGeometry(.29,.012,.19),G(0x9fd3ef,.4,1),inc,0,.035,0,0);
+const idr=cvs(256,64),idrP=plane(.16,.04,idr.t,inc,0,.51,.211);const door=new THREE.Group();door.position.set(-.23,.28,.215);inc.add(door);
+add(new THREE.BoxGeometry(.44,.5,.01),G(0xcfe6f2,.18,1.6),door,.22,0,0,0).renderOrder=4;B(.46,.012,.012,steel,door,.23,.256,0);B(.46,.012,.012,steel,door,.23,-.256,0);B(.012,.5,.012,steel,door,0,0,0);B(.012,.5,.012,steel,door,.44,0,0);C(.006,.08,steel,door,.4,0,.009,1,12);
+const door2=new THREE.Group();door2.position.set(-.235,.28,.236);inc.add(door2);B(.47,.555,.022,incM,door2,.235,0,0);B(.47,.008,.004,S(0x9aa3aa,.5,.3),door2,.235,.15,.013);C(.008,.22,brushed,door2,.43,-.02,.03,1,12);B(.012,.012,.03,brushed,door2,.43,.08,.018);B(.012,.012,.03,brushed,door2,.43,-.12,.018);door2.add(idrP);idrP.position.set(.235,.21,.0115);
+const incL=new THREE.MeshStandardMaterial({color:0x00ff44,emissive:0x00ff44,emissiveIntensity:.8});add(new THREE.SphereGeometry(.006,10,10),incL,door2,.38,.21,.012,0);
+const SLOT=k=>k<6?V(IN.x-.13+.13*(k%3),.179,IN.z+(k<3?-.08:.08)):V(IN.x-.13+.13*(k-6),.359,IN.z);
+
+/* ===== colony counter ===== */
+const CC=V(2.08,0,-.02);B(.24,.06,.24,S(0x2b3036,.4,.2,.5),A,CC.x,.03,CC.z);
+const ccK=cvs(256,256);{const x=ccK.x;x.fillStyle='#24282c';x.fillRect(0,0,256,256);x.fillStyle='#f6f1e2';x.beginPath();x.arc(128,128,124,0,TAU);x.fill();x.strokeStyle='rgba(60,60,60,.35)';x.lineWidth=1;for(let i=8;i<256;i+=24){x.beginPath();x.moveTo(i,0);x.lineTo(i,256);x.moveTo(0,i);x.lineTo(256,i);x.stroke()}}
+add(new THREE.CircleGeometry(.07,40).rotateX(-PI/2),new THREE.MeshBasicMaterial({map:ccK.t,toneMapped:false}),A,CC.x,.0605,CC.z,0);const ccL=new THREE.PointLight(0xfff2d8,.2,.35);ccL.position.set(CC.x,.1,CC.z);A.add(ccL);
+B(.014,.16,.014,brushed,A,CC.x,.14,CC.z-.11);B(.014,.014,.04,brushed,A,CC.x,.22,CC.z-.093);add(new THREE.TorusGeometry(.075,.006,10,40),dark,A,CC.x,.22,CC.z,1).rotation.x=PI/2;add(new THREE.CylinderGeometry(.072,.072,.004,40),G(0xf4fbff,.18,1.6),A,CC.x,.22,CC.z,0).renderOrder=5;
+const ccD=cvs(128,40);plane(.09,.028,ccD.t,A,CC.x-.04,.03,CC.z+.1205);C(.012,.012,capMat(0xc0392b),A,CC.x+.07,.03,CC.z+.126,1,20).rotation.x=PI/2;
+
+/* props */
+{const g=new THREE.Group();g.position.set(-1.25,0,-.3);A.add(g);add(new THREE.LatheGeometry([V2(0,0),V2(.035,0),V2(.037,.006),V2(.037,.13),V2(.03,.15),V2(.014,.16),V2(.014,.17)],28),new THREE.MeshPhysicalMaterial(E({color:0xf4f6f2,roughness:.5,transparent:true,opacity:.82,side:2,depthWrite:false},.5)),g,0,0,0,0).renderOrder=3;
+ add(new THREE.CylinderGeometry(.034,.034,.08,24),G(0xd8eef6,.5,.6),g,0,.046,0,0).renderOrder=2;C(.017,.02,S(0xe8e8e2,.5,0),g,0,.178,0,1,20);add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(0,.186,0),V(0,.24,0),V(.02,.256,0),V(.06,.242,0),V(.078,.226,0)]),24,.0028,8),S(0xeeeeea,.5,0),g,0,0,0);
+ wrapLabel(.0375,.045,.1,txt(128,96,'70% ETHANOL\nbench disinfectant\nFLAMMABLE','#0b4e8a','#ffffff','bold 13px sans-serif'),g,1.5)}
+rbottle(-.88,-.4,.2,G(0xeef6f4,.25,1.6),0x1e5fb8,txt(128,80,'SALINE 0.85%\nsterile · 500 mL','#123','#fbfaf4','bold 15px sans-serif'));
+rbottle(-1.05,-.45,.16,G(0xeef6f4,.25,1.6),0xe07a1f,txt(128,80,'NUTRIENT\nBROTH','#123','#fbfaf4','bold 16px sans-serif'));
+{const g=new THREE.Group();g.position.set(1.86,0,.32);A.add(g);add(new THREE.CylinderGeometry(.066,.058,.2,32,1,true),new THREE.MeshStandardMaterial(E({color:0xd8401f,roughness:.5,side:2},.4)),g,0,.1,0);C(.058,.004,S(0xb83418,.5,0),g,0,.002,0,1,32);add(new THREE.TorusGeometry(.066,.006,8,40),S(0xf2a31b,.4,0),g,0,.2,0).rotation.x=PI/2;wrapLabel(.0638,.09,.105,bhTex(),g,1.4)}
+
+/* ===== interactive targets (first-person) ===== */
+const hitM=new THREE.MeshBasicMaterial({visible:false}),HIT=[],T={};
+function hit(id,name,c,sz,act,label){const m=new THREE.Mesh(new THREE.BoxGeometry(sz[0],sz[1],sz[2]),hitM);m.position.set(c[0],c[1],c[2]);A.add(m);const t={id,name,m,h:sz[1],act,label};HIT.push(t);T[id]=t}
+hit('marker','Marker pen',[MKR.x,.015,MKR.z],[.16,.05,.06],()=>label(),()=>st.labeled?'already labelled':'label tubes & plates');
+hit('rack','Dilution tubes',[-.25,.065,TZ],[.42,.14,.1],()=>rackUse(),()=>{const s=stepNow();if(s===0)return'label them first';if(s<=2)return st.mixed[st.cur]?(st.tip==='fresh'?`transfer 1 mL into ${tname(st.cur+1)}`:'fit a fresh tip first'):`vortex ${tname(st.cur)}`;return''});
+hit('vortex','Vortex mixer',[VX.x,.055,VX.z],[.14,.12,.17],()=>vortex(),()=>st.mixed[st.cur]?'':`mix ${tname(st.cur)}`);
+hit('tips','Sterile tip box',[TB.x,.05,TB.z],[.1,.1,.14],()=>newTip(),()=>st.tip==='fresh'?'tip already fitted':st.tip==='used'?'eject & fit a fresh tip':'fit a sterile tip');
+hit('waste','Tip waste',[TW.x,.05,TW.z],[.08,.11,.08],()=>newTip(),()=>st.tip==='used'?'eject & fit a fresh tip':'');
+hit('pip','P1000 pipette',[PIPR.x,.13,PIPR.z],[.05,.28,.05],()=>cyclePV(),()=>`set to ${st.pv} µL · change volume`);
+hit('spr','Ethanol & spreader',[EBK.x,.09,EBK.z],[.09,.2,.09],()=>flame(),()=>st.spFlamed?(st.spT>.3?'cooling…':'flamed and cool'):'dip in ethanol & flame');
+hit('tt','Turntable',[TT.x,.03,TT.z],[.16,.07,.16],()=>spread(),()=>stepNow()===3?`spread ${PLNt(st.pi)}`:'');
+hit('plates','Petri dishes',[.93,.025,.05],[.36,.06,.36],()=>platesUse(),()=>{const s=stepNow();if(s===3){const k=st.pi;return k<8&&!PL[k].inoc?`inoculate ${PLNt(k)}`:'spread it on the turntable'}return s===4?'invert & incubate':''});
+hit('inc','Incubator 37 °C',[IN.x,.28,IN.z],[.48,.58,.46],()=>incUse(),()=>{const s=stepNow();if(s===4)return'load the plates';if(s===5)return`${st.hr.toFixed(0)} h · come back after 24 h`;if(s>=6&&!st.counting)return'take the plates out';return''});
+hit('cc','Colony counter',[CC.x,.09,CC.z],[.26,.2,.26],()=>openCount(),()=>st.counting?'counting':stepNow()>=6?'count colonies':'');
+hit('burner','Bunsen burner',[BX,.1,BZ],[.1,.2,.1],()=>tmsg('The Bunsen is lit with a blue flame. Use the ethanol beaker next to it to flame the spreader.'),()=>'lit');
+hit('wash','70% ethanol wash bottle',[-1.25,.1,-.3],[.09,.24,.09],()=>disinfect(),()=>st.disinf?'bench disinfected':'disinfect the bench');
+hit('bin','Biohazard bin',[1.86,.1,.32],[.15,.2,.15],()=>tmsg('Used plates and tips go in the biohazard bag, which is autoclaved before disposal.'),()=>'');
+const beacon=new THREE.Mesh(new THREE.OctahedronGeometry(.016),new THREE.MeshBasicMaterial({color:0x6fe0c5,transparent:true,opacity:.92,depthTest:false}));beacon.renderOrder=20;A.add(beacon);
+const ACT2T={b1:'marker',bvx:'vortex',btip:'tips',btr:'rack',bpv:'pip',binoc:'plates',bfl:'spr',bspr:'tt',binc:'inc',ff:'inc',bcnt:'cc'};
+/* lights */
+const hemi=new THREE.HemisphereLight(0xffffff,0x8899aa,.42);scene.add(hemi);
+const key=new THREE.DirectionalLight(0xfff6ea,.8);key.position.set(2,4,.7);key.target.position.set(.4,1.1,-1.8);scene.add(key.target);key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);key.shadow.bias=-.0004;Object.assign(key.shadow.camera,{near:1,far:9,left:-2.4,right:2.4,top:2.4,bottom:-2.4});scene.add(key);
+const rimL=new THREE.DirectionalLight(0xcfe3ff,.3);rimL.position.set(-3,3,-6);scene.add(rimL);
+
+/* ===== model ===== */
+const st={};let LV=0,selLV=0,hintUntil=0,ts=5,asp=2,an=null,INST=false,onCC=-1;const tmsg=m=>{$('tmsg').innerHTML=m;$('mmsg').innerHTML=m;$('hmsg').innerHTML=m};
+function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function pois(m,r){if(m<=0)return 0;if(m<60){const L=Math.exp(-m);let k=0,p=1;do{k++;p*=r()}while(p>L);return k-1}const u=r(),v=r();return Math.max(0,Math.round(m+Math.sqrt(m)*Math.sqrt(-2*Math.log(u+1e-9))*Math.cos(TAU*v)))}
+function newBatch(seed){const r=rng(seed*7919+13);for(const k in st)delete st[k];Object.assign(st,{seed,N0:(1.6+r()*6.8)*1e8,labeled:false,cur:0,conc:[0,0,0,0,0,0,0,0],vol:[10,9,9,9,9,9,9,9],mixed:[false,false,false,false,false,false,false,false],tip:'none',tipN:0,tipConc:0,pv:1000,pipOut:false,pi:0,spFlamed:false,spT:0,inc:false,out:false,hr:0,counting:false,sel:0,ans:null,warn:'',E:{tip:0,mix:0,vol:0,pvol:0,carry:0,unfl:0,hot:0},ffUsed:0,disinf:false,t0:null,tEnd:null,shown:false,q:{},hints:0,autoUsed:false,newB:[]});st.conc[0]=st.N0}
+const W=k=>LV<2&&st.warn!==k;
+const tname=i=>i===0?'the culture':`10<sup>−${i}</sup>`,PLNt=k=>k<8?`10<sup>−${DIL[k]}</sup> ${k%2?'B':'A'}`:'sterility control';
+function tubeVis(i){const T=TUBES[i],v=st.vol[i],h=Math.max(.0005,v*.005);T.liq.scale.y=h;T.liq.position.y=.005+h/2;const f=i===0?1:clamp(st.conc[i]/st.N0),c=mix(SAL,BROTH,i===0?1:Math.min(1,f*1.5));T.liq.material.color.setRGB(c[0],c[1],c[2]);T.liq.material.opacity=lerp(.3,.92,clamp(Math.sqrt(f)));T.vtx.material.color.setRGB(c[0],c[1],c[2])}
+function expTxt(x,base,e,cx,cy,f1,f2,col){x.fillStyle=col;x.textBaseline='alphabetic';x.textAlign='left';x.font=`bold ${f1}px sans-serif`;const w1=x.measureText(base).width;x.font=`bold ${f2}px sans-serif`;const w2=x.measureText(e).width,x0=cx-(w1+w2+1)/2;x.font=`bold ${f1}px sans-serif`;x.fillText(base,x0,cy+f1*.35);x.font=`bold ${f2}px sans-serif`;x.fillText(e,x0+w1+1,cy-f1*.22)}
+function blankTube(i){const x=TUBES[i].lk.x;x.fillStyle='#f7f6f1';x.fillRect(0,0,64,160);TUBES[i].lk.t.needsUpdate=true}
+function writeTube(i){blankTube(i);const x=TUBES[i].lk.x;if(i===0){x.fillStyle='#14306e';x.font='bold 17px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('E. coli',32,66);x.font='bold 13px sans-serif';x.fillText('broth',32,92)}else expTxt(x,'10','−'+i,32,80,24,16,'#14306e');TUBES[i].lk.t.needsUpdate=true}
+function writePlate(k){const x=PL[k].lk.x;x.clearRect(0,0,128,40);if(k===8){x.fillStyle='#14306e';x.font='bold 18px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('STERILE',64,21)}else{expTxt(x,'10','−'+DIL[k],52,20,22,15,'#14306e');x.font='bold 20px sans-serif';x.textAlign='left';x.textBaseline='middle';x.fillText(k%2?'B':'A',86,21)}PL[k].lk.t.needsUpdate=true}
+function plateInit(p){Object.assign(p,{inoc:false,spread:false,vol:0,mean:0,n:0,all:null,lawn:false,contam:false,killed:false,rec:null,marks:new Set(),dirty:true,lastHr:-9})}
+function genCols(p,k){const r=rng(st.seed*977+k*131),N=Math.min(p.n,1200),a=[];for(let i=0;i<N;i++){const t=r()*TAU,rr=Math.sqrt(r())*.039;a.push([Math.cos(t)*rr,Math.sin(t)*rr,.7+r()*.6,.6+r()*.4,-1])}p.lawn=p.n>1200;p.nc=0;
+ if(p.contam){const m=3+Math.floor(r()*5);p.nc=m;for(let i=0;i<m;i++){const t=r()*TAU,rr=Math.sqrt(r())*.036;a.push([Math.cos(t)*rr,Math.sin(t)*rr,.9+r()*.7,1,Math.floor(r()*3)])}}p.all=a;p.marks=new Set();p.dirty=true}
+const vis=p=>p.spread?p.n+(p.nc||0):0;
+const CONT=[['#e6c03f',1.3],['#f8f8f4',1.8],['#c9b48a',1.1]];
+function colR(p,c,k){const g=st.inc?sm((st.hr-8)/16):0;if(g<=0)return 0;const n=vis(p),crowd=n>300?Math.max(.32,Math.sqrt(300/n)):1;return c[4]>=0?(1+3*g)*c[2]*k*CONT[c[4]][1]:(.5+2.3*g*c[3])*c[2]*crowd*k}
+function drawPlate(x,size,p){const R=size/2,s=R/.0455,k=size/300;x.clearRect(0,0,size,size);x.save();x.beginPath();x.arc(R,R,.0434*s,0,TAU);x.clip();
+ const g0=x.createRadialGradient(R*.8,R*.8,4,R,R,R);g0.addColorStop(0,'#efe3b8');g0.addColorStop(1,'#d6c48b');x.fillStyle=g0;x.fillRect(0,0,size,size);
+ if(p.inoc&&!p.spread){const dr=(5+6*Math.cbrt(p.vol/.1))*k,g=x.createRadialGradient(R-dr*.3,R-dr*.3,1,R,R,dr);g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(.6,'rgba(240,232,205,.6)');g.addColorStop(1,'rgba(200,185,140,.5)');x.fillStyle=g;x.beginPath();x.arc(R,R,dr,0,TAU);x.fill()}
+ if(p.spread&&p.all){const gr=st.inc?sm((st.hr-8)/16):0;if(p.lawn&&gr>0){x.fillStyle=`rgba(246,240,222,${.55*gr})`;x.fillRect(0,0,size,size)}
+  p.all.forEach((c,i)=>{const r=colR(p,c,k);if(r<.4)return;const cx=R+c[0]*s,cy=R+c[1]*s;
+   if(c[4]>=0){x.fillStyle=CONT[c[4]][0];x.beginPath();x.arc(cx,cy,r,0,TAU);x.fill();if(c[4]===1){x.strokeStyle='rgba(170,160,140,.7)';x.lineWidth=k;x.stroke()}}
+   else{x.fillStyle='#c4b994';x.beginPath();x.arc(cx,cy,r,0,TAU);x.fill();x.fillStyle='#f3edd9';x.beginPath();x.arc(cx-r*.12,cy-r*.12,r*.82,0,TAU);x.fill();if(r>1.6){x.fillStyle='rgba(255,255,255,.85)';x.beginPath();x.arc(cx-r*.35,cy-r*.35,r*.25,0,TAU);x.fill()}}
+   if(p.marks.has(i)){x.fillStyle='#1d4fd0';x.beginPath();x.arc(cx,cy,Math.max(1.4*k,r*.45),0,TAU);x.fill()}})}
+ x.restore();x.strokeStyle='rgba(80,70,40,.45)';x.lineWidth=1.5;x.beginPath();x.arc(R,R,.0434*s,0,TAU);x.stroke()}
+
+/* animation helpers */
+const kf=(K,t)=>{let i=0;while(i<K.length-2&&t>K[i+1][0])i++;const a=K[i],b=K[i+1],u=sm((t-a[0])/(b[0]-a[0]));return[1,2,3,4].map(j=>lerp(a[j],b[j],u))};
+function run(dur,upd,end){if(INST){upd&&upd(1,dur);end&&end();return}an={t:0,dur,upd,end}}
+const busy=()=>{if(!an)return false;an.t=Math.max(an.t,an.dur);return true};
+function capAt(cap,par,homeL,awayA,u,lift=.05){if(u<=0){if(cap.parent!==par)par.add(cap);cap.position.copy(homeL);cap.rotation.set(0,0,0);return}
+ const a=sm(u*2),b=sm(u*2-1),h=homeL.clone().add(par.position);if(cap.parent!==A)A.add(cap);cap.position.set(lerp(h.x,awayA.x,b),lerp(h.y+lift*a,awayA.y,b),lerp(h.z,awayA.z,b));cap.rotation.set(PI*b,-5*a,0)}
+function plungerAt(pr){plg.position.y=.226-.012*pr}
+function tipFill(f,full){tipLiq.visible=f>.02;tipLiq.scale.setScalar(Math.max(.01,f*full))}
+function setPV(v){st.pv=v;$('bpv').textContent=`Pipette: ${v} µL`;drawPV()}
+
+/* ===== actions ===== */
+function label(){if(busy())return;if(st.labeled)return tmsg('Tubes and plates are already labelled.');setView(1);tmsg('Labelling each saline tube with its dilution and each plate with dilution and replicate…');
+ const K=[[0,MKR.x,MKR.y,MKR.z,0]],W=[];let t=.8;
+ for(let i=0;i<8;i++){const x=TX(i),y=TY+.072,z=TZ+.0095;K.push([t,x,y+.01,z+.03,1],[t+.25,x,y,z,1],[t+.65,x,y,z,1],[t+.85,x,y+.01,z+.03,1]);W.push([t+.6,()=>writeTube(i)]);t+=.9}
+ for(let k=0;k<9;k++){const b=PHOME(k),y=.0075,z=b.z+.047;K.push([t+.25,b.x,y+.012,z+.03,1],[t+.5,b.x,y,z,1],[t+.9,b.x,y,z,1],[t+1.1,b.x,y+.012,z+.03,1]);W.push([t+.85,()=>writePlate(k)]);t+=1.15}
+ K.push([t+.8,MKR.x,MKR.y,MKR.z,0]);const dur=t+.9,done=new Set();
+ run(dur,(q,tt)=>{const k=kf(K,Math.min(tt,dur));mk.position.set(k[0]+(k[3]>.99?.0025*Math.sin(tt*30):0),k[1],k[2]);mk.rotation.set(1.05*k[3],0,PI/2*(1-k[3]));if(tt>8.5&&tt<9.5)setView(2);W.forEach((w,j)=>{if(tt>=w[0]&&!done.has(j)){done.add(j);w[1]()}})},
+  ()=>{mk.position.copy(MKR);mk.rotation.set(0,0,PI/2);for(let i=0;i<8;i++)writeTube(i);for(let k=0;k<9;k++)writePlate(k);st.labeled=true;setView(1);tmsg('Labelled. Next: vortex the culture.')})}
+function vortex(){if(busy())return;if(!st.labeled)return tmsg('Label the tubes and plates first (step 1).');const i=st.cur;if(st.mixed[i])return tmsg(i===0?'The culture is already mixed.':`${tname(i)} is already mixed.`);
+ setView(1);tmsg(`Vortexing ${tname(i)} for a few seconds to resuspend the cells…`);const T=TUBES[i],g=T.g,h=V(TX(i),TY,TZ),cup=V(VX.x,.089,VX.z-.01);
+ const K=[[0,h.x,h.y,h.z,0],[.8,h.x,.16,h.z,0],[1.8,cup.x,.18,cup.z,0],[2.4,cup.x,cup.y,cup.z,0],[5.4,cup.x,cup.y,cup.z,0],[6,cup.x,.18,cup.z,0],[7,h.x,.16,h.z,0],[7.8,h.x,h.y,h.z,0]];
+ run(7.8,(q,t)=>{const k=kf(K,Math.min(t,7.8)),a=t>2.4&&t<5.4?sm((t-2.5)/.4)*(1-sm((t-5)/.4)):0,w=t*95;g.position.set(k[0]+.0024*a*Math.cos(w),k[1],k[2]+.0024*a*Math.sin(w));g.rotation.x=.05*a*Math.sin(w);g.rotation.z=.05*a*Math.cos(w);
+  vxCup.position.x=VX.x+.0016*a*Math.cos(w);vxCup.position.z=VX.z-.01+.0016*a*Math.sin(w);vxKnob.rotation.y=-2.2*sm((t-2)/.4)*(1-sm((t-5.4)/.4));T.vtx.visible=a>.05;T.vtx.scale.set(1,.03*a,1);T.vtx.position.y=.005+st.vol[i]*.005},
+  ()=>{g.position.copy(h);g.rotation.set(0,0,0);vxCup.position.set(VX.x,.087,VX.z-.01);vxKnob.rotation.y=0;T.vtx.visible=false;st.mixed[i]=true;
+   tmsg(i===0?'Culture mixed. Next: put on a fresh tip and transfer 1 mL into 10<sup>−1</sup>.':i===7?'Dilution series complete. Set the pipette to 100 µL for spread plating.':`${tname(i)} mixed. Next: eject the tip and take a fresh one.`)})}
+function newTip(){if(busy())return;if(!st.labeled)return tmsg('Label the tubes and plates first (step 1).');if(st.tip==='fresh')return tmsg('A fresh tip is already on the pipette.');if(st.tipN>=96)return tmsg('The tip box is empty. Reset for a new batch.');
+ const had=st.tip==='used',n=st.tipN,q0=tipXZ(n),p0=st.pipOut?pip.position.clone():PIPR.clone();if(stepNow()<3)setView(1);
+ tmsg(had?'Ejecting the used tip into the biohazard bin, then pressing on a fresh sterile tip…':'Picking up the pipette and pressing on a sterile tip…');
+ const K=[[0,p0.x,p0.y,p0.z,0]];let t=0;if(had){K.push([1.2,TW.x,.2,TW.z,0],[2.2,TW.x,.2,TW.z,0]);t=2.2}else if(!st.pipOut){K.push([.9,PIPR.x,.26,PIPR.z+.06,0]);t=.9}
+ const tA=t+1.1;K.push([tA,q0.x,.16,q0.z,0],[tA+.6,q0.x,.006,q0.z,0],[tA+.9,q0.x,0,q0.z,0],[tA+1.6,q0.x,.16,q0.z,0],[tA+2.6,HOV.x,HOV.y,HOV.z,0]);const dur=tA+2.7;let took=false,ej=false;
+ run(dur,(q,tt)=>{const k=kf(K,Math.min(tt,dur));pip.position.set(k[0],k[1],k[2]);hand.visible=thumb.visible=true;st.pipOut=true;
+  if(had){ejB.position.y=.236-.008*Math.sin(wn(tt,1.3,1.8)*PI);if(tt>1.6&&!ej){ej=true;pTip.visible=false;ftip.visible=true;ftip.position.copy(pip.position)}if(ej&&ftip.visible){ftip.position.y=Math.max(.03,.2-4.9*Math.pow(tt-1.6,2));if(tt>2.1)ftip.visible=false}}
+  if(!took&&tt>tA+.85){took=true;tipHide(n);pTip.visible=true}},
+  ()=>{pTip.visible=true;ftip.visible=false;tipHide(n);st.tipN=n+1;st.tip='fresh';pip.position.copy(HOV);hand.visible=thumb.visible=true;st.pipOut=true;ejB.position.y=.236;tmsg('Fresh sterile tip on.')})}
+function transfer(){if(busy())return;if(!st.labeled)return tmsg('Label the tubes and plates first (step 1).');if(!st.mixed[0])return tmsg('Vortex the culture first (step 2).');const s=st.cur,d=s+1;if(d>7)return tmsg('The series is complete: all seven dilution tubes are made.');
+ if(st.tip==='none')return tmsg('Put on a fresh sterile tip first.');const v=st.pv/1000;
+ if(st.tip==='used'&&W('tip')){st.warn='tip';return tmsg('This tip has already been in another tube. Reusing it carries extra cells over and inflates every later dilution. Press Transfer again to reuse it anyway.')}
+ if(!st.mixed[s]&&W('mix')){st.warn='mix';return tmsg(`${tname(s)} has not been vortexed, so the cells have settled. Press Transfer again to go ahead anyway.`)}
+ if(v!==1&&W('vol')){st.warn='vol';return tmsg(`The pipette is set to ${st.pv} µL. A 1:10 dilution needs 1000 µL into 9 mL. Press Transfer again to go ahead anyway.`)}st.warn='';
+ const reuse=st.tip==='used',eff=st.mixed[s]?1:.4,cells=v*st.conc[s]*eff+(reuse?.01*st.tipConc:0);if(reuse)st.E.tip++;if(!st.mixed[s])st.E.mix++;if(v!==1)st.E.vol++;
+ setView(1);tmsg(`Transferring ${st.pv} µL from ${tname(s)} into ${tname(d)} (9 mL saline)…`);
+ const S0=V(TX(s),0,TZ),D0=V(TX(d),0,TZ),p0=pip.position.clone(),vs0=st.vol[s],vd0=st.vol[d],full=Math.cbrt(v),c=mix(SAL,BROTH,s===0?1:clamp(st.conc[s]/st.N0*1.5));tipLiq.material.color.setRGB(c[0],c[1],c[2]);
+ const K=[[0,p0.x,p0.y,p0.z,0],[1.2,S0.x,.2,S0.z,0],[2.3,S0.x,.032,S0.z,0],[3.9,S0.x,.032,S0.z,0],[4.8,S0.x,.2,S0.z,0],[6,D0.x,.2,D0.z,0],[6.9,D0.x,.05,D0.z,0],[9.2,D0.x,.05,D0.z,0],[10.2,D0.x,.2,D0.z,0],[11.4,HOV.x,HOV.y,HOV.z,0]];
+ run(11.6,(q,t)=>{const k=kf(K,Math.min(t,11.6));pip.position.set(k[0],k[1],k[2]);
+  capAt(TUBES[s].cap,TUBES[s].g,CAPH,CAPAW(s),Math.min(wn(t,0,1.1),1-wn(t,4.9,6.1)),.03);capAt(TUBES[d].cap,TUBES[d].g,CAPH,CAPAW(d),Math.min(wn(t,3.6,4.9),1-wn(t,10.2,11.5)),.03);
+  plungerAt(t<2.4?sm((t-1.3)/.5):t<3.6?1-sm((t-2.5)/1.1):t<7?0:t<8.2?sm((t-7)/1.2):t<10.2?1+.35*sm((t-8.3)/.5):1.35*(1-sm((t-10.2)/.6)));
+  tipFill(t<2.5?0:t<3.6?sm((t-2.5)/1.1):t<7?1:t<8.4?1-sm((t-7)/1.4):0,full);st.vol[s]=vs0-v*sm((t-2.5)/1.1);st.vol[d]=vd0+v*sm((t-7)/1.4);tubeVis(s);tubeVis(d)},
+  ()=>{plungerAt(0);tipLiq.visible=false;pip.position.copy(HOV);capAt(TUBES[s].cap,TUBES[s].g,CAPH,CAPAW(s),0);capAt(TUBES[d].cap,TUBES[d].g,CAPH,CAPAW(d),0);
+   st.vol[s]=vs0-v;st.vol[d]=vd0+v;st.conc[d]=(st.conc[d]*vd0+cells)/(vd0+v);st.tipConc=st.conc[s];st.tip='used';st.mixed[d]=false;st.cur=d;tubeVis(s);tubeVis(d);
+   tmsg(d===7?'Last transfer done. Vortex the 10<sup>−7</sup> tube to finish the series.':`Done. Now vortex ${tname(d)}.`)})}
+function inoculate(){if(busy())return;if(stepNow()<3)return tmsg('Finish the dilution series first (step 3).');const k=st.pi;if(k>=9)return tmsg('All plates are done.');const p=PL[k];
+ if(k===8)return tmsg('The sterility control gets no inoculum. Flame the spreader and spread it as it is.');if(p.inoc)return tmsg('This plate already has its inoculum. Flame the spreader, then spread.');
+ if(st.tip==='none')return tmsg('Put on a fresh sterile tip first.');const t=DIL[k],v=st.pv/1000;
+ if(v!==.1&&W('pv')){st.warn='pv';return tmsg(`The pipette is set to ${st.pv} µL. Spread plates take 100 µL (0.1 mL). Press Inoculate again to plate anyway.`)}
+ const risk=st.tip==='used'&&st.tipConc>st.conc[t]*1.5;if(risk&&W('pc')){st.warn='pc';return tmsg('This tip last held a more concentrated dilution. Take a fresh tip, or press Inoculate again to use it anyway.')}st.warn='';
+ const eff=st.mixed[t]?1:.4,carry=st.tip==='used'?.01*st.tipConc:0;if(v!==.1)st.E.pvol++;if(risk)st.E.carry++;
+ setView(2);tmsg(`Pipetting ${st.pv} µL of ${tname(t)} onto plate ${PLNt(k)}…`);
+ const S0=V(TX(t),0,TZ),P0=p.base,p0=pip.position.clone(),full=Math.cbrt(v),vs0=st.vol[t],c=mix(SAL,BROTH,clamp(st.conc[t]/st.N0*1.5));tipLiq.material.color.setRGB(c[0],c[1],c[2]);
+ const K=[[0,p0.x,p0.y,p0.z,0],[1.2,S0.x,.2,S0.z,0],[2.2,S0.x,.035,S0.z,0],[3.6,S0.x,.035,S0.z,0],[4.5,S0.x,.2,S0.z,0],[6.2,P0.x,.12,P0.z,0],[6.9,P0.x,.03,P0.z,0],[8.4,P0.x,.03,P0.z,0],[9.2,P0.x,.12,P0.z,0],[10.6,HOV.x,HOV.y,HOV.z,0]];
+ run(10.8,(q,tt)=>{const kk=kf(K,Math.min(tt,10.8));pip.position.set(kk[0],kk[1],kk[2]);capAt(TUBES[t].cap,TUBES[t].g,CAPH,CAPAW(t),Math.min(wn(tt,0,1.1),1-wn(tt,4.6,5.8)),.03);
+  const lu=tt<6.4?sm((tt-5.4)/.8):tt<9.3?1:1-sm((tt-9.3)/.8);p.lid.position.set(.065*lu,.05*lu,0);p.lid.rotation.z=-.45*lu;
+  plungerAt(tt<2.3?sm((tt-1.3)/.5):tt<3.4?1-sm((tt-2.3)/1):tt<7?0:tt<7.9?sm((tt-7)/.9):tt<9.2?1+.35*sm((tt-8)/.4):1.35*(1-sm((tt-9.2)/.6)));
+  tipFill(tt<2.3?0:tt<3.3?sm((tt-2.3)/1):tt<7?1:tt<8.2?1-sm((tt-7)/1.2):0,full);
+  if(tt>7.2){p.drop.visible=true;const ds=Math.cbrt(v/.1)*sm((tt-7.2)/1);p.drop.scale.set(Math.max(.01,ds),Math.max(.01,.22*ds),Math.max(.01,ds))}st.vol[t]=vs0-v*sm((tt-2.3)/1);tubeVis(t)},
+  ()=>{plungerAt(0);tipLiq.visible=false;pip.position.copy(HOV);capAt(TUBES[t].cap,TUBES[t].g,CAPH,CAPAW(t),0);p.lid.position.set(0,0,0);p.lid.rotation.z=0;
+   p.inoc=true;p.vol=v;p.mean=v*st.conc[t]*eff+carry;st.vol[t]=vs0-v;st.tipConc=st.conc[t];st.tip='used';tubeVis(t);const ds=Math.cbrt(v/.1);p.drop.visible=true;p.drop.scale.set(ds,.22*ds,ds);p.dirty=true;
+   tmsg('Inoculum is on the agar. Flame the spreader, let it cool, then spread.')})}
+function flame(){if(busy())return;if(stepNow()<3)return tmsg('Finish the dilution series first (step 3).');if(st.pi>=9)return tmsg('All plates are spread.');if(st.spFlamed)return tmsg(st.spT>.3?'The spreader is flamed and still hot. Let it cool a few seconds.':'The spreader is flamed and cool. Spread now.');
+ setView(2);tmsg('Dipping the spreader in 70% ethanol and passing it through the flame. The alcohol burns off…');
+ const p0=spr.position.clone(),r0=spr.rotation.z,FL=V(BX-.02,.175,BZ),K=[[0,p0.x,p0.y,p0.z,r0],[.7,SPHOME.x,.004,SPHOME.z,.12],[1.4,SPHOME.x,.03,SPHOME.z,.12],[2.3,EBK.x,.17,EBK.z,0],[3.4,FL.x,FL.y,FL.z,0],[4.4,FL.x+.04,FL.y,FL.z,0],[5.6,SPH.x,SPH.y,SPH.z,0],[6.4,SPH.x,SPH.y,SPH.z,0]];
+ run(6.4,(q,t)=>{const k=kf(K,Math.min(t,6.4));spr.position.set(k[0],k[1],k[2]);spr.rotation.z=k[3];if(t>1.6&&t<2.2&&Math.random()<.3)emit(k[0]-.01,k[1]-.004,k[2],[.9,.95,1],.0012,.05);
+  const burn=wn(t,3.4,3.6)*(1-wn(t,4.8,5.8));sprFl.visible=burn>.02;sprFl.scale.set(1,Math.max(.01,burn*(1+.2*Math.sin(t*40))),1)},
+  ()=>{spr.position.copy(SPH);spr.rotation.set(0,0,0);sprFl.visible=false;st.spFlamed=true;st.spT=1;tmsg('Flamed. Hold it a few seconds to cool before it touches the agar.')})}
+function spread(){if(busy())return;if(stepNow()<3)return tmsg('Finish the dilution series first (step 3).');const k=st.pi;if(k>=9)return tmsg('All plates are spread.');const p=PL[k];
+ if(k<8&&!p.inoc)return tmsg('Pipette 0.1 mL onto this plate first (Inoculate plate).');
+ if(!st.spFlamed&&W('fl')){st.warn='fl';return tmsg('The spreader has not been flamed since it was last used, so it can carry contaminants. Press Spread again to go ahead anyway.')}
+ if(st.spFlamed&&st.spT>.3&&W('hot')){st.warn='hot';return tmsg('The spreader is still hot and will kill cells on contact. Wait a few seconds, or press Spread again to go ahead anyway.')}st.warn='';
+ const unfl=!st.spFlamed,hot=st.spFlamed&&st.spT>.3;if(unfl)st.E.unfl++;if(hot)st.E.hot++;
+ setView(2);tmsg(`Spreading plate ${PLNt(k)} on the turntable…`);
+ const B0=p.base,TP=V(TT.x,.022,TT.z),s0=spr.position.clone(),r0=spr.rotation.z,a0=ttP.rotation.y;
+ const PK=[[0,B0.x,0,B0.z,0],[.5,B0.x,.06,B0.z,0],[1.5,TP.x,.07,TP.z,0],[2,TP.x,TP.y,TP.z,0],[9,TP.x,TP.y,TP.z,0],[9.5,TP.x,.07,TP.z,0],[10.5,B0.x,.06,B0.z,0],[11,B0.x,0,B0.z,0]];
+ const SK=[[0,s0.x,s0.y,s0.z,r0],[2.6,TP.x,.07,TP.z,0],[3.2,TP.x,.0287,TP.z,0],[7.6,TP.x,.0287,TP.z,0],[8,TP.x,.07,TP.z,0],[9,EBK.x,.17,EBK.z,0],[9.8,SPHOME.x,.04,SPHOME.z,.12],[10.4,SPHOME.x,SPHOME.y,SPHOME.z,.12]];
+ run(11,(q,t)=>{const k=kf(PK,Math.min(t,11));p.g.position.set(k[0],k[1],k[2]);const on=t>2&&t<9;ttP.rotation.y=a0+7*cl(t-3.2,0,4.4);p.g.rotation.y=on?ttP.rotation.y-a0:0;
+  const lu=t<2.4?sm((t-1.8)/.6):t<7.9?1:1-sm((t-7.9)/.7);p.lid.position.set(.065*lu,.05*lu,0);p.lid.rotation.z=-.45*lu;
+  const s=kf(SK,Math.min(t,11));spr.position.set(s[0],s[1],s[2]+(t>3.2&&t<7.6?.02*Math.sin((t-3.2)*5):0));spr.rotation.z=s[3];
+  if(k<8&&t>3.2){const u=1-sm((t-3.2)/2.8);p.drop.visible=u>.02;p.drop.scale.set(Math.max(.01,u*1.6),Math.max(.01,u*.12),Math.max(.01,u*1.6))}},
+  ()=>{p.g.position.copy(p.base);p.g.rotation.set(0,0,0);p.lid.position.set(0,0,0);p.lid.rotation.z=0;sprHome();p.drop.visible=false;
+   const r=rng(st.seed*131+k*17);let mean=p.mean||0;if(hot)mean*=.3;p.killed=hot;p.contam=unfl;p.n=pois(mean,r);p.spread=true;genCols(p,k);st.spFlamed=false;st.spT=0;st.pi=k+1;
+   tmsg(st.pi===9?'All nine plates spread. Invert them and incubate (step 5).':st.pi===8?'Last: the sterility control. Flame the spreader and spread it with no inoculum.':`Spread. Next plate: ${PLNt(st.pi)}.`)})}
+function incubate(){if(busy())return;if(st.pi<9)return tmsg('Spread all nine plates first (step 4).');if(st.inc)return tmsg('The plates are already incubating.');setView(3);tmsg('Inverting the plates and loading the 37 °C incubator…');
+ run(7.6,(q,t)=>{door2.rotation.y=-1.95*(t<1?sm(t):t<6.5?1:1-sm(t-6.5));door.rotation.y=-1.6*(t<1.3?sm(t-.3):t<6?1:1-sm(t-6));
+  PL.forEach((p,k)=>{const u=sm((t-1.2-k*.2)/2.2),f=sm((t-1.2-k*.2)/1),sl=SLOT(k);p.g.position.set(lerp(p.base.x,sl.x,u),lerp(0,sl.y,u)+Math.sin(u*PI)*.12,lerp(p.base.z,sl.z,u));p.g.rotation.x=PI*f})},
+  ()=>{PL.forEach((p,k)=>{p.g.position.copy(SLOT(k));p.g.rotation.x=PI});door.rotation.y=door2.rotation.y=0;st.inc=true;st.hr=0;tmsg('Incubating at 37 °C. Run the clock to at least 24 h, then count.')})}
+function openCount(){if(busy())return;if(!st.inc)return tmsg('Incubate the plates first (step 5).');if(st.hr<24)return tmsg(`Colonies are not ready yet (${st.hr.toFixed(1)} h). Incubate at least 24 h.`);if(st.counting){selPlate(st.sel);return}
+ setView(4);tmsg('Taking the plates out of the incubator…');st.out=true;
+ run(7.4,(q,t)=>{door2.rotation.y=-1.95*(t<1?sm(t):t<6.3?1:1-sm(t-6.3));door.rotation.y=-1.6*(t<1.3?sm(t-.3):t<5.8?1:1-sm(t-5.8));
+  PL.forEach((p,k)=>{const u=sm((t-1.3-k*.18)/2.2),f=sm((t-2.2-k*.18)/1),sl=SLOT(k);p.g.position.set(lerp(sl.x,p.base.x,u),lerp(sl.y,0,u)+Math.sin(u*PI)*.12,lerp(sl.z,p.base.z,u));p.g.rotation.x=PI*(1-f)})},
+  ()=>{PL.forEach(p=>{p.g.position.copy(p.base);p.g.rotation.set(0,0,0)});door.rotation.y=door2.rotation.y=0;st.counting=true;document.body.classList.add('cnt');setTab('cnt');if(mob.matches)document.body.classList.add('nb');setView(4);unlock();const nx=PL.findIndex(p=>p.rec==null);selPlate(nx<0?0:nx);
+   tmsg('Click each colony to count it. Use TNTC (over 300) or TFTC (under 30) where the 30–300 rule applies, then record.')})}
+function selPlate(k){st.sel=k;for(let i=0;i<9;i++)$('p'+i).classList.toggle('on',i===k);
+ if(onCC!==k){const prev=onCC,p=PL[k],a=prev>=0?PL[prev]:null;onCC=k;const fin=()=>{if(a)a.g.position.copy(a.base);p.g.position.set(CC.x,.061,CC.z)};
+  if(INST||an)fin();else run(2.4,(q,t)=>{const u=sm(t/1.2),w=sm((t-1)/1.4);if(a)a.g.position.set(lerp(CC.x,a.base.x,u),.061*(1-u)+Math.sin(u*PI)*.1,lerp(CC.z,a.base.z,u));p.g.position.set(lerp(p.base.x,CC.x,w),lerp(0,.061,w)+Math.sin(w*PI)*.1,lerp(p.base.z,CC.z,w))},fin)}
+ cndraw()}
+function cndraw(){const p=PL[st.sel],x=$('cc').getContext('2d');x.fillStyle='#1a1a1a';x.fillRect(0,0,300,300);drawPlate(x,300,p);$('cnth').innerHTML=`Plate ${PLNt(st.sel)}`;
+ const r=p.rec==null?'not recorded':typeof p.rec==='number'?`recorded ${p.rec}`:`recorded ${p.rec}`;$('cntt').innerHTML=`Marked: <b>${p.marks.size}</b> colonies · ${r}`+(st.sel===8?'<br>Sterility control: record its count (should be 0).':'');
+ for(let i=0;i<9;i++){const b=$('p'+i),q=PL[i];b.innerHTML=(i<8?`10<sup>−${DIL[i]}</sup>${i%2?'B':'A'}`:'Ctrl')+(q.rec!=null?' ✓':'')}}
+function evalRes(){const cnt=[];PL.slice(0,8).forEach((p,k)=>{if(typeof p.rec==='number'&&p.rec>=30&&p.rec<=300)cnt.push(p.rec/(.1*Math.pow(10,-DIL[k])))});return{exp:cnt.length?cnt.reduce((a,b)=>a+b)/cnt.length:null,n:cnt.length}}
+function parseSci(s){const sup='⁰¹²³⁴⁵⁶⁷⁸⁹';s=String(s).replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+/g,m=>'^'+[...m].map(c=>c==='⁻'?'-':sup.indexOf(c)).join('')).replace(/\s+/g,'').replace(/[×xX*]/g,'x').replace(/,/g,'').replace(/−/g,'-');
+ let m=s.match(/^([\d.]+)x10\^?([-+]?\d+)$/);if(m)return parseFloat(m[1])*Math.pow(10,+m[2]);m=s.match(/^10\^([-+]?\d+)$/);if(m)return Math.pow(10,+m[1]);m=s.match(/^([\d.]+)e([-+]?\d+)$/i);if(m)return parseFloat(m[1])*Math.pow(10,+m[2]);return/^[\d.]+$/.test(s)?parseFloat(s):NaN}
+function sci(v){if(!(v>0))return String(v);const e=Math.floor(Math.log10(v)),m=v/Math.pow(10,e);return `${m.toFixed(2)} × 10<sup>${e}</sup>`}
+function submit(){if(!st.counting)return tmsg('Count the plates first.');if(PL.some(p=>p.rec==null))return tmsg('Record every plate first (count, TNTC or TFTC), including the sterility control.');
+ const v=parseSci($('ans').value);if(!(v>0))return tmsg('Enter a number such as 4.5 x 10^8 or 4.5e8.');const r=evalRes();if(!r.exp)return tmsg('None of your recorded plates is in the 30–300 range, so CFU/mL cannot be calculated.');st.ans=v;st.tEnd=performance.now();tmsg('Result submitted. Read the batch record for the QC decision.')}
+const stepNow=()=>!st.labeled?0:!st.mixed[0]?1:(st.cur<7||!st.mixed[7])?2:st.pi<9?3:!st.inc?4:st.hr<24&&!st.out?5:PL.some(p=>p.rec==null)?6:st.ans==null?7:8;
+function nextAct(){const s=stepNow();if(s===0)return'b1';if(s===1)return'bvx';if(s===2){if(st.pv!==1000)return'bpv';if(!st.mixed[st.cur])return'bvx';return st.tip==='fresh'?'btr':'btip'}
+ if(s===3){if(st.pv!==100)return'bpv';const k=st.pi;if(k<8&&!PL[k].inoc)return st.tip==='none'||(st.tip==='used'&&st.tipConc>st.conc[DIL[k]]*1.5)?'btip':'binoc';return st.spFlamed?(st.spT>.3?'':'bspr'):'bfl'}
+ if(s===4)return'binc';if(s===5)return'ff';return'bcnt'}
+function ff(){if(an)return busy();if(LV===2)return tmsg('Finish step is turned off in the Exam.');INST=true;const s0=stepNow();let g=0;if(s0<8)st.ffUsed++;
+ if(s0===0)label();
+ if(s0===1)vortex();
+ if(s0===2){setPV(1000);while(!(st.cur>=7&&st.mixed[7])&&g++<40){if(!st.mixed[st.cur])vortex();else{if(st.tip!=='fresh')newTip();transfer()}}}
+ if(s0===3){setPV(100);while(st.pi<9&&g++<60){const k=st.pi,p=PL[k];if(k<8&&!p.inoc){if(st.tip==='none'||(st.tip==='used'&&st.tipConc>st.conc[DIL[k]]*1.5))newTip();inoculate()}else{if(!st.spFlamed)flame();st.spT=0;spread()}}}
+ if(s0===4)incubate();
+ if(s0===5)st.hr=Math.max(st.hr,24);
+ if(s0===6){if(!st.counting)openCount();PL.forEach((p,k)=>{if(p.rec!=null)return;const n=vis(p);if(k===8)p.rec=n;else if(n>300)p.rec='TNTC';else if(n<30)p.rec='TFTC';else{p.rec=n;p.marks=new Set(p.all.map((_,i)=>i))}p.dirty=true});selPlate(st.sel)}
+ if(s0===7){const r=evalRes();if(r.exp){$('ans').value=sci(r.exp).replace(' × 10<sup>',' x 10^').replace('</sup>','');submit()}}
+ INST=false;if(s0<7)tmsg('Step completed.')}
+function rackUse(){const s=stepNow();if(s===0)return tmsg('Label the tubes first: use the marker pen.');if(s<=2)return st.mixed[st.cur]?transfer():vortex();tmsg('The dilution series is done. Work at the plates now.')}
+function platesUse(){const s=stepNow();if(s<3)return tmsg('Finish the dilution series first.');if(s===3){const k=st.pi;return k<8&&!PL[k].inoc?inoculate():spread()}if(s===4)return incubate();if(s>=6)return openCount();tmsg('The plates are incubating.')}
+function incUse(){const s=stepNow();if(s===4)return incubate();if(s===5){st.hr=Math.max(st.hr,24);return tmsg('A day later: colonies have grown. Take the plates out to count them.')}if(s>=6)return openCount();tmsg('The incubator holds 37 °C. Plates go in after spreading.')}
+function cyclePV(){if(an)return busy();const L=[1000,100,500];setPV(L[(L.indexOf(st.pv)+1)%3]);tmsg(st.pv===1000?'1000 µL: for the 1 mL dilution transfers.':st.pv===100?'100 µL: for spread plates (0.1 mL).':'500 µL: not used in this protocol.')}
+function disinfect(){if(st.disinf)return tmsg('The bench is already disinfected.');st.disinf=true;tmsg('Bench wiped down with 70% ethanol before starting. Good aseptic practice.')}
+const errN=()=>{const E=st.E;return E.tip+E.mix+E.vol+E.pvol+E.carry+E.unfl+E.hot};
+function recOK(p,k){const n=vis(p);if(k===8)return true;const want=n>300?'TNTC':n<30?'TFTC':'num';return want==='num'?typeof p.rec==='number'&&Math.abs(p.rec-n)<=Math.max(2,.1*n):p.rec===want}
+function verdict(){const r=evalRes(),cont=vis(PL[8])>0,calcOK=!!(r.exp&&Math.abs(st.ans-r.exp)/r.exp<=.05),acc=!!(r.exp&&Math.abs(r.exp-st.N0)/st.N0<=.35),misc=PL.slice(0,8).filter((p,k)=>p.rec!=null&&!recOK(p,k)).length;
+ return{r,cont,calcOK,acc,misc,ok:!cont&&calcOK&&acc&&!misc,why:[cont?'the sterility control grew colonies':'',calcOK?'':'the calculation does not match your counts',acc?'':'the result is more than 35% from the true count',misc?`${misc} plate(s) misread`:''].filter(Boolean)}}
+const elapsed=()=>st.t0==null?0:((st.tEnd||performance.now())-st.t0)/1000,mmss=s=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+function scoreNow(){let s=0;if(st.disinf)s+=20;if(st.labeled)s+=20;s+=st.mixed.filter(Boolean).length*10+st.cur*15;PL.forEach((p,k)=>{if(p.inoc)s+=10;if(p.spread)s+=15;if(p.rec!=null&&recOK(p,k))s+=10});if(st.inc)s+=20;if(st.out)s+=20;s-=30*errN()+40*st.ffUsed+25*st.hints;s+=30*Object.values(st.q).filter(Boolean).length;
+ if(st.ans!=null&&verdict().ok)s+=150+Math.max(0,300-Math.floor(elapsed()/3));return Math.max(0,s)}
+let lastSc=null,lastObj='',aimT=null,aimKey='';
+function toast(d){const t=$('toast');t.textContent=(d>0?'+':'−')+Math.abs(d);t.style.color=d>0?'#6fe0c5':'#ff8a65';t.classList.remove('go');void t.offsetWidth;t.classList.add('go')}
+function hudTick(){quizTick();$('stime').textContent=mmss(elapsed());const sc=scoreNow();$('spts').textContent=sc+' pts';if(lastSc!==null&&sc!==lastSc&&st.t0!=null)toast(sc-lastSc);lastSc=sc;
+ const s=stepNow(),o=`<b>Objective ${s+1}/9 · ${STEPS[s][0]}</b><span>${STEPS[s][1]}</span>`;if(o!==lastObj){lastObj=o;$('ostep').innerHTML=o}
+ if(st.ans!=null&&!st.shown){st.shown=true;showResult()}}
+function starsFor(v){if(!v.ok)return 1;return errN()===0&&st.ffUsed===0&&st.hints===0&&!st.autoUsed&&qRight()>=7?3:2}
+const qRight=()=>Object.values(st.q).filter(Boolean).length;
+function showResult(){clearRun();const v=verdict(),n=starsFor(v),sc=scoreNow(),tm=elapsed();$('rTitle').textContent=(LV===2?(v.ok?'Exam passed':'Exam failed'):v.ok?'Batch accepted':'Batch rejected')+' · '+LVL[LV].n;
+ $('rStars').innerHTML='★'.repeat(n)+'<span>'+'★'.repeat(3-n)+'</span>';
+ const tips=[];if(errN())tips.push(`${errN()} technique slip(s)`);if(st.ffUsed)tips.push(`${st.ffUsed} skipped step(s)`);if(st.hints)tips.push(`${st.hints} hint(s)`);if(st.autoUsed)tips.push('auto-count used');
+ $('rStats').innerHTML=`Score <b>${sc}</b> · Time <b>${mmss(tm)}</b> · Questions <b>${qRight()}/${QS.length}</b><br>Your result: ${sci(st.ans)} CFU/mL<br>True count: ${sci(st.N0)} CFU/mL<br>${v.ok?(n===3?'Clean run: no slips, no shortcuts, no hints.':'Accepted. For 3 stars: '+(tips.length?'avoid '+tips.join(', '):'answer at least 7 questions right')+'.'):'Rejected because '+v.why.join(', ')+'.'}`;
+ const nb=awardBadges(v,n,sc,tm);$('rBadges').innerHTML=nb.length?`<h2 style="margin-top:4px">New badge${nb.length>1?'s':''}</h2><div class="bdg">${nb.map(b=>`<div class="bd got new"><i>${b.i}</i>${b.n}</div>`).join('')}</div>`:'';
+ $('nextB').hidden=!(v.ok&&LV<2);if(LV<2)$('nextB').textContent='Next level: '+LVL[LV+1].n;$('result').hidden=false;unlock()}
+const rc=new THREE.Raycaster(),ndc=new THREE.Vector2();
+function pick(x=0,y=0){cam.updateMatrixWorld();ndc.set(x,y);rc.setFromCamera(ndc,cam);rc.far=2.6;const h=rc.intersectObjects(HIT.map(t=>t.m),false);return h.length?HIT.find(t=>t.m===h[0].object):null}
+function aimUpdate(){aimT=pick();const key=aimT?aimT.name+'|'+aimT.label():'';if(key===aimKey)return;aimKey=key;const pr=$('prompt');
+ if(aimT){const l=aimT.label();pr.innerHTML=`<kbd>${document.body.classList.contains('touch')?'Use':'E'}</kbd> ${aimT.name}${l?` · ${l}`:''}`;pr.style.display='block'}else pr.style.display='none';$('cross').classList.toggle('aim',!!aimT)}
+function interact(x,y){if(mode!=='fps'||modalOpen())return;if(an)return void busy();const t=x==null?pick():pick(x,y);if(!t)return tmsg('Nothing to use there. Aim the crosshair at a piece of equipment.');startClock();t.act()}
+/* ===== levels, questions, badges, progress ===== */
+const LVL=[{n:'Tutorial',d:'Full guidance. A glowing marker shows the next piece of equipment, each step is explained, and a warning appears before any slip.'},
+ {n:'Practice',d:'No marker or highlighted buttons. Press H (or Hint) when stuck, at a cost of 25 points. Warnings still appear before a slip.'},
+ {n:'Exam',d:'No marker, no hints, no warnings, no skipping steps and no auto-count. Timed and graded: a pass needs an accepted batch.'}];
+const sp=t=>t.replace(/\^(−?\d+)/g,'<sup>$1</sup>');
+const QS=[
+ {id:'dil',tag:'Dilution',when:()=>st.mixed[0]&&st.cur===0,q:'You add 1 mL of culture to 9 mL of sterile saline. What dilution is that?',o:['1:10 (10^−1)','1:9','1:90','1:100 (10^−2)'],e:'The final volume is 1 + 9 = 10 mL, so the culture is diluted 1 in 10. Seven of these steps take it to 10^−7.'},
+ {id:'tip',tag:'Aseptic technique',when:()=>st.cur>=1,q:'Why fit a fresh tip before every transfer?',o:['Cells left on a used tip carry over and make every later tube too concentrated','A used tip holds less liquid','A fresh tip makes the liquid flow faster','Tips only need changing between different organisms'],e:'A tip that sat in a stronger dilution carries extra cells into the next tube. The error grows down the series, so counts come out too high.'},
+ {id:'vtx',tag:'Mixing',when:()=>st.cur>=2,q:'Why vortex each tube before taking the next 1 mL?',o:['Cells settle, so an unmixed sample holds fewer cells than the tube average','Vortexing sterilises the tube','It warms the saline to 37 °C','It makes the bacteria divide'],e:'Bacteria sink and clump. Mixing spreads them evenly so that 1 mL really holds one tenth of the cells in the tube.'},
+ {id:'fac',tag:'Dilution factor',when:()=>stepNow()>=3,q:'You spread 0.1 mL from the 10^−6 tube. Which dilution factor goes into the CFU/mL calculation?',o:['10^−7 (0.1 mL × 10^−6)','10^−6','10^−5','10^−8'],e:'Plating 0.1 mL instead of 1 mL is one more ten-fold step, so that plate holds the cells from 10^−7 mL of the original culture.'},
+ {id:'hot',tag:'Spread plating',when:()=>st.pi>=1,q:'Why let the flamed spreader cool before it touches the agar?',o:['A hot spreader kills the cells it touches, so counts come out low','Hot glass melts the plastic dish','Cooling is what makes the spreader sterile','Heat makes the agar set too fast'],e:'The flame sterilises the spreader. Touching the agar while it is still hot kills bacteria in the inoculum, so fewer colonies grow.'},
+ {id:'ctl',tag:'Quality control',when:()=>st.pi>=8,q:'What is the uninoculated sterility control plate for?',o:['To show the media, saline and technique added no contaminants','To give a zero point for the colony count','To check the incubator temperature','To compare colony colours'],e:'Any colony on the control means contamination came from the agar, the spreader or the air, so every count in the batch is suspect.'},
+ {id:'inv',tag:'Incubation',when:()=>st.inc,q:'Why are plates incubated upside down?',o:['Condensation would drip onto the agar and smear the colonies together','Bacteria grow toward gravity','It lets more oxygen reach the colonies','It keeps the labels readable'],e:'Water condenses on the lid at 37 °C. With the agar on top, drops fall onto the lid instead of spreading colonies across the plate.'},
+ {id:'rng',tag:'Counting',when:()=>st.counting,q:'Which plates should be used to calculate CFU/mL?',o:['Plates with 30–300 colonies','Every plate that has any colonies','Only the plate with the most colonies','Plates with fewer than 30 colonies'],e:'Below 30, chance has too much effect on the count. Above 300, colonies merge and get missed. 30–300 is the statistically reliable range.'},
+ {id:'cfu',tag:'Calculation',when:()=>st.counting&&PL.every(p=>p.rec!=null),q:'A 10^−6 plate (0.1 mL spread) has 45 colonies. What is the concentration of the original culture?',o:['4.5 × 10^8 CFU/mL','4.5 × 10^7 CFU/mL','4.5 × 10^6 CFU/mL','4.5 × 10^9 CFU/mL'],e:'CFU/mL = 45 ÷ (0.1 × 10^−6) = 45 × 10^7 = 4.5 × 10^8 CFU/mL.'}];
+let qCur=null;
+function openQ(q){qCur=q;unlock();const r=rng(st.seed*31+q.id.charCodeAt(0)*7+q.id.charCodeAt(1)),ord=[0,1,2,3].sort(()=>r()-.5);
+ $('qTag').textContent=`Question ${Object.keys(st.q).length+1} of ${QS.length} · ${q.tag}`;$('qText').innerHTML=sp(q.q);$('qExp').innerHTML='';$('qGo').hidden=true;const box=$('qOpts');box.innerHTML='';
+ ord.forEach(i=>{const b=document.createElement('button');b.innerHTML=sp(q.o[i]);b.onclick=()=>{if(q.id in st.q)return;const ok=i===0;st.q[q.id]=ok;[...box.children].forEach((c,j)=>{c.disabled=true;if(ord[j]===0)c.classList.add('ok')});if(!ok)b.classList.add('bad');
+  $('qExp').innerHTML=`<b style="color:${ok?'#2fa36b':'var(--hot)'}">${ok?'Correct, +30 points.':'Not quite.'}</b>${sp(q.e)}`;$('qGo').hidden=false;$('qGo').focus()};box.appendChild(b)});
+ $('quiz').hidden=false;setTimeout(()=>box.firstChild&&box.firstChild.focus(),50)}
+function closeQ(){$('quiz').hidden=true;qCur=null;if(mode==='fps')tryLock()}
+function quizTick(){if(st.t0==null||an||modalOpen()||st.ans!=null)return;const q=QS.find(q=>!(q.id in st.q)&&q.when());if(q)openQ(q)}
+const HINT={b1:'Pick up the marker pen and label the tubes and plates.',bvx:'Take the current tube to the vortex mixer.',btip:'Go to the blue tip box and fit a fresh sterile tip.',btr:'At the tube rack, transfer 1 mL into the next saline tube.',bpv:'Click the pipette (or press V) to change the volume: 1000 µL for dilutions, 100 µL for plates.',binoc:'Pipette 100 µL onto the next plate at the plate stack.',bfl:'At the ethanol beaker, dip and flame the spreader.',bspr:'Spread the plate on the turntable.',binc:'Load the plates into the incubator.',ff:'Use the incubator to let the plates grow for 24 h.',bcnt:'Take the plates to the colony counter.','':'Wait a few seconds for the spreader to cool.'};
+function hint(){if(LV!==1||st.ans!=null)return;if(an)return busy();st.hints++;hintUntil=performance.now()+8000;tmsg('Hint: '+(stepNow()>=6?'Count each plate, record it, then enter CFU/mL = colonies ÷ (0.1 × dilution).':HINT[nextAct()]||HINT['']))}
+const BADGES=[{id:'first',i:'🧫',n:'First shift',d:'Finish any shift'},{id:'asep',i:'🔥',n:'Aseptic ace',d:'Accepted batch with fresh tips, flamed spreader and a clean control, no skips'},
+ {id:'pip',i:'💧',n:'Pipette pro',d:'Every volume and transfer right, every tube mixed, no skips'},{id:'eye',i:'🔍',n:'Sharp eye',d:'Read all 8 plates correctly yourself'},
+ {id:'math',i:'🧮',n:'Number cruncher',d:'Calculate CFU/mL correctly from your counts'},{id:'quiz',i:'🎓',n:'Quiz master',d:'Answer all 9 questions right in one shift'},
+ {id:'exam',i:'📜',n:'Certified',d:'Pass the Exam'},{id:'gold',i:'🏆',n:'Gold standard',d:'3 stars on the Exam'}];
+const PKEY='sdlab-progress-v1';let PROG={best:{},badges:{},runs:0},progRef=null,progWhere='device';
+function mergeP(a,b){const o={best:{},badges:Object.assign({},a.badges||{},b.badges||{}),runs:Math.max(a.runs||0,b.runs||0)};
+ ['L0','L1','L2'].forEach(k=>{const x=a.best&&a.best[k],y=b.best&&b.best[k];o.best[k]=!x?(y||null):!y?x:(y.stars>x.stars||(y.stars===x.stars&&y.score>x.score))?y:x;if(!o.best[k])delete o.best[k]});return o}
+function loadLocal(){try{const j=JSON.parse(localStorage.getItem(PKEY)||'null');if(j)PROG=mergeP(PROG,j)}catch(e){}}
+function saveProg(){try{localStorage.setItem(PKEY,JSON.stringify(PROG))}catch(e){}if(progRef)progRef.set(JSON.parse(JSON.stringify(PROG))).catch(()=>{progRef=null;progWhere='device';renderMenu()})}
+async function initCloud(){try{if(!window.claude||!window.claude.use)return;const[db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);if(!db||!user)return;const id=await user.id();if(!id)return;let cw=null;try{cw=await user.can('data.write')}catch(e){}if(cw===false)return;
+ const ref=db.doc('data/users/'+id+'/progress'),snap=await ref.get();if(snap.exists)PROG=mergeP(PROG,snap.data()||{});progRef=ref;progWhere='account';try{localStorage.setItem(PKEY,JSON.stringify(PROG))}catch(e){}renderMenu()}catch(e){progRef=null}}
+function awardBadges(v,n,sc,tm){const E=st.E,clean=st.ffUsed===0,nb=[],give=id=>{if(!PROG.badges[id]){PROG.badges[id]=true;nb.push(BADGES.find(b=>b.id===id))}};
+ give('first');if(v.ok&&clean&&!E.unfl&&!E.tip&&!E.carry&&!v.cont)give('asep');if(clean&&!E.vol&&!E.pvol&&!E.tip&&!E.mix&&!E.carry)give('pip');
+ if(clean&&!st.autoUsed&&PL.slice(0,8).every((p,k)=>recOK(p,k)))give('eye');if(v.calcOK&&clean)give('math');if(qRight()===QS.length)give('quiz');if(LV===2&&v.ok)give('exam');if(LV===2&&n===3)give('gold');
+ PROG.runs=(PROG.runs||0)+1;const k='L'+LV,b=PROG.best[k];if(!b||n>b.stars||(n===b.stars&&sc>b.score))PROG.best[k]={stars:n,score:sc,time:Math.round(tm)};saveProg();renderMenu();return nb}
+function renderMenu(){$('lvls').innerHTML=LVL.map((l,i)=>{const b=PROG.best['L'+i],n=b?b.stars:0;return `<button class="lvl${i===selLV?' on':''}" role="radio" aria-checked="${i===selLV}" data-l="${i}"><b>${i+1}. ${l.n}</b><span class="st">${'★'.repeat(n)}<i>${'★'.repeat(3-n)}</i></span><small>${b?`Best ${b.score} pts · ${mmss(b.time)}`:'Not played yet'}</small></button>`}).join('');
+ document.querySelectorAll('#lvls .lvl').forEach(b=>b.onclick=()=>{selLV=+b.dataset.l;renderMenu()});$('lvDesc').textContent=LVL[selLV].d;
+ $('badges').innerHTML=BADGES.map(b=>`<div class="bd${PROG.badges[b.id]?' got':''}" title="${b.d}"><i>${b.i}</i>${b.n}</div>`).join('');
+ const got=BADGES.filter(b=>PROG.badges[b.id]).length;$('pWhere').textContent=`${got} of ${BADGES.length} badges · ${PROG.runs||0} shift${PROG.runs===1?'':'s'} played · progress saved ${progWhere==='account'?'to your Claude account':'on this device'}`;menuResume()}
+function applyLV(){LV=selLV;[0,1,2].forEach(i=>document.body.classList.toggle('lv'+i,i===LV));$('slv').textContent=LVL[LV].n;hintUntil=0}
+function startLevel(m){applyLV();resetAll();$('intro').hidden=true;setMode(m);startClock();if(m==='fps')tryLock();showCH(m);tmsg(LV===0?'Follow the glowing marker. Start with the marker pen to label tubes and plates.':LV===1?'Practice: no marker. Press H if you get stuck.':'Exam: no help. Work carefully; the clock is running.')}
+function showMenu(){$('result').hidden=true;$('quiz').hidden=true;qCur=null;$('intro').hidden=false;renderMenu();unlock()}
+function modalOpen(){return!$('intro').hidden||!$('quiz').hidden||!$('result').hidden}
+function startClock(){if(st.t0==null)st.t0=performance.now()}
+function toggleNB(){if(mode!=='fps')return;document.body.classList.toggle('nb');if(document.body.classList.contains('nb'))unlock()}
+function setMode(m){mode=m;document.body.classList.toggle('fps',m==='fps');$('modeB').innerHTML='Classic<span class="lg"> view</span>';$('modeB').hidden=false;cam.rotation.order='YXZ';if(m==='orbit'){unlock();document.body.classList.remove('nb');cam.fov=40;cam.updateProjectionMatrix();setView(vi)}else{cam.fov=62;cam.updateProjectionMatrix();zoom=false}aimKey='~'}
+/* ===== UX: autosave & resume, objective arrow, controls hint ===== */
+const RKEY=PKEY.replace('progress','run'),RM=matchMedia('(prefers-reduced-motion: reduce)').matches;let saveAcc=0,chUntil=0;
+function saveRun(){try{if(st.t0==null||st.end||an||st.filling||!$('intro').hidden||!$('result').hidden)return;const s={};for(const k in st)if(!['t0','tEnd','shown','filling'].includes(k))s[k]=st[k];
+ localStorage.setItem(RKEY,JSON.stringify({v:1,LV,mode,el:elapsed(),step:Math.min(stepNow(),8),st:s,d:snapDom(),at:Date.now()}))}catch(e){}}
+function clearRun(){try{localStorage.removeItem(RKEY)}catch(e){}}
+function getSaved(){try{const j=JSON.parse(localStorage.getItem(RKEY)||'null');return j&&j.v===1&&Date.now()-j.at<7*864e5?j:null}catch(e){return null}}
+function resumeRun(){const j=getSaved();if(!j)return;selLV=j.LV;applyLV();resetAll();Object.assign(st,JSON.parse(JSON.stringify(j.st)));restoreDom(j.d);$('intro').hidden=true;setMode(j.mode);
+ st.t0=performance.now()-j.el*1000;lastSc=null;if(j.mode==='fps')tryLock();showCH(j.mode);tmsg('Shift resumed where you left off.')}
+function menuResume(){const j=getSaved();$('resumeB').hidden=!j;$('startB').classList.toggle('cta',!j);$('startB').textContent=j?'Start a new shift':'Start shift';if(j)$('resumeB').textContent=`Resume ${LVL[j.LV].n} · step ${j.step+1} of 9 · ${mmss(j.el)}`}
+addEventListener('visibilitychange',()=>{if(document.hidden)saveRun()});addEventListener('pagehide',saveRun);
+function showCH(m){const c=$('chint');if(m!=='fps'||(PROG.runs||0)>=3){c.classList.remove('show');return}
+ c.innerHTML=document.body.classList.contains('touch')?'<b>Left stick</b> walk · <b>drag</b> to look · <b>tap</b> equipment or <b>Use</b><br>Tap again during an animation to skip it':'<b>Click</b> the bench to look around · <b>W A S D</b> walk · <b>E</b> use · <b>Tab</b> notebook<br>Press <b>E</b> during an animation to skip it';
+ c.classList.add('show');chUntil=performance.now()+11000}
+function chTick(now){if(chUntil&&now>chUntil){chUntil=0;$('chint').classList.remove('show')}}
+const _w=new THREE.Vector3();
+function arrowTick(){const a=$('oarr');if(mode!=='fps'||!beacon.visible||modalOpen()){if(a.style.display!=='none')a.style.display='none';return}
+ beacon.getWorldPosition(_w);_w.project(cam);let x=_w.x,y=_w.y;const behind=_w.z>1;if(behind){x=-x;y=-y;if(Math.abs(x)<.02&&Math.abs(y)<.02)y=-1}
+ if(!behind&&Math.abs(x)<.9&&Math.abs(y)<.85){if(a.style.display!=='none')a.style.display='none';return}
+ const m=Math.max(Math.abs(x)/.88,Math.abs(y)/.78,1e-6);x/=m;y/=m;const r=$('hud').getBoundingClientRect();
+ a.style.display='block';a.style.left=((x+1)/2*r.width)+'px';a.style.top=((1-y)/2*r.height)+'px';a.style.transform=`translate(-50%,-50%) rotate(${-Math.atan2(y,x)}rad)`}
+function snapDom(){return{PL:PL.map(p=>({inoc:p.inoc,spread:p.spread,vol:p.vol,mean:p.mean,n:p.n,contam:p.contam,killed:p.killed,rec:p.rec,marks:[...p.marks]}))}}
+function restoreDom(d){for(let i=0;i<8;i++){if(st.labeled)writeTube(i);tubeVis(i)}if(st.labeled)for(let k=0;k<9;k++)writePlate(k);
+ for(let n=0;n<st.tipN;n++)tipHide(n);setPV(st.pv);if(st.pipOut){pip.position.copy(HOV);hand.visible=thumb.visible=true;pTip.visible=st.tip!=='none'}
+ if(st.spFlamed){spr.position.copy(SPH);spr.rotation.set(0,0,0)}
+ PL.forEach((p,k)=>{const s=d.PL[k];Object.assign(p,{inoc:s.inoc,spread:s.spread,vol:s.vol,mean:s.mean,n:s.n,contam:s.contam,killed:s.killed,rec:s.rec});if(p.spread){genCols(p,k);p.marks=new Set(s.marks)}
+  if(p.inoc&&!p.spread){const ds=Math.cbrt(p.vol/.1);p.drop.visible=true;p.drop.scale.set(ds,.22*ds,ds)}p.dirty=true;if(st.inc&&!st.out){p.g.position.copy(SLOT(k));p.g.rotation.x=PI}});
+ if(st.counting){st.counting=false;INST=true;openCount();INST=false}}
+const STEPS=[['Label tubes &amp; plates','Mark each saline tube 10<sup>−1</sup> to 10<sup>−7</sup> and each plate with its dilution and replicate.'],['Vortex the culture','Resuspend the <i>E. coli</i> broth so every millilitre holds the same number of cells.'],['Dilution series to 10<sup>−7</sup>','For each tube: fresh tip, transfer 1000 µL into 9 mL saline, vortex. Seven ten-fold steps.'],['Spread plating','Set 100 µL. Plate 10<sup>−7</sup> to 10<sup>−4</sup> in duplicate, most dilute first, then the sterility control. Each plate: inoculate, flame the spreader, let it cool, spread.'],['Incubate','Invert the plates and incubate at 37 °C.'],['Incubating','Run the clock to at least 24 h.'],['Count colonies','Count plates with 30–300 colonies. Mark the rest TNTC or TFTC.'],['Calculate CFU/mL','CFU/mL = colonies ÷ (0.1 mL × dilution). Average the countable plates.'],['QC review','Read the batch record: accepted or rejected.']];
+let cache='',cc2='',tb2='';
+function renderSteps(){const step=stepNow(),h=STEPS.map(([t,d],i)=>`<li class="${i<step?'done':i===step?'cur':''}">${i<step?'✓ ':''}${t}${i===step?`<span>${d}</span>`:''}</li>`).join('');if(h!==cache){cache=h;$('olist').innerHTML=h}
+ const na=nextAct();['b1','bvx','btip','btr','bpv','binoc','bfl','bspr','binc','bcnt','ff'].forEach(id=>$(id).classList.toggle('cta',id===na&&LV===0));
+ $('mstep').innerHTML=`Step ${step+1} of 9 · ${STEPS[step][0]}`;$('tcnt').disabled=!st.counting;if(LV===0&&na&&na!==lastNa&&mob.matches)$(na).scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});lastNa=na}
+let lastNa='';const mob=matchMedia('(max-width:760px) and (orientation:portrait),(max-height:540px) and (orientation:landscape)');
+function setTab(t){if(t==='cnt'&&!st.counting)return;['steps','status','cnt'].forEach(x=>document.body.classList.toggle('tab-'+x,x===t));document.querySelectorAll('#tabs button').forEach(b=>{b.classList.toggle('on',b.dataset.t===t);b.setAttribute('aria-selected',b.dataset.t===t)})}
+function panels(){hudTick();const h=st.vol.map((v,i)=>`<span>${i?`10<sup>−${i}</sup>`:'Culture'}</span><span>${v.toFixed(1)} mL${i&&i>st.cur?' saline':''}</span><span class="${st.mixed[i]?'ok':'no'}">${i>st.cur?'—':st.mixed[i]?'● mixed':'○ settled'}</span>`).join('');if(h!==tb2){tb2=h;$('tubes').innerHTML=h}
+ const sp=st.spFlamed?(st.spT>.3?`flamed, cooling (${Math.round(25+st.spT*160)} °C)`:'flamed, cool ✓'):'in 70% ethanol';
+ $('kit').innerHTML=`Pipette ${st.pv} µL · tip: ${st.tip==='none'?'none':st.tip==='fresh'?'fresh sterile':'used'} · ${96-st.tipN} tips left<br>Spreader: ${sp}<br>${st.inc?`Incubated ${st.hr.toFixed(1)} h at 37 °C`:'Not incubated yet'}`}
+function comp(){const R=[],E=st.E,ok=(c,t)=>R.push([c,t]),info=t=>R.push([null,t]);
+ if(st.labeled)ok(true,'Tubes and plates labelled');if(st.mixed[0])ok(true,'Culture vortexed before sampling');
+ if(st.cur>0){info(`Dilution series: ${st.cur}/7 transfers`);ok(!E.tip,E.tip?`Tip reused ${E.tip}× between tubes (carry-over inflates counts)`:'Fresh tip for every transfer');ok(!E.mix,E.mix?`${E.mix} transfer(s) from an unmixed tube (counts too low)`:'Each tube vortexed before sampling');ok(!E.vol,E.vol?`${E.vol} transfer(s) with the wrong volume (dilution factor wrong)`:'1000 µL into 9 mL each time (1:10)')}
+ if(st.pi>0){info(`Spread plating: ${st.pi}/9 plates`);if(E.pvol)ok(false,`${E.pvol} plate(s) inoculated with the wrong volume`);if(E.carry)ok(false,`${E.carry} plate(s) inoculated with a tip from a stronger dilution`);ok(!E.unfl,E.unfl?`Spreader not flamed ${E.unfl}× (contamination)`:'Spreader flamed before each plate');ok(!E.hot,E.hot?`Hot spreader used ${E.hot}× (cells killed)`:'Spreader cooled before touching the agar')}
+ if(st.inc)info(`Incubated ${Math.min(st.hr,72).toFixed(0)} h at 37 °C, inverted`);
+ let misc=0,cont=false;if(st.counting)PL.forEach((p,k)=>{if(p.rec==null)return;const n=vis(p);if(k===8){cont=n>0;ok(!cont,cont?`Sterility control: ${n} colonies (contaminated)`:'Sterility control: no growth ✓');return}
+  const want=n>300?'TNTC':n<30?'TFTC':'num',good=want==='num'?typeof p.rec==='number'&&Math.abs(p.rec-n)<=Math.max(2,.1*n):p.rec===want;if(!good)misc++;
+  ok(good,`10<sup>−${DIL[k]}</sup> ${k%2?'B':'A'}: you recorded ${p.rec} · plate shows ${n>300?(p.lawn?'a near-confluent lawn':`${n} (over 300)`):n}`)});
+ if(st.ans!=null){const r=evalRes(),calcOK=r.exp&&Math.abs(st.ans-r.exp)/r.exp<=.05,acc=r.exp&&Math.abs(r.exp-st.N0)/st.N0<=.35;
+  ok(calcOK,`Your result: ${sci(st.ans)} CFU/mL · from your counts: ${r.exp?sci(r.exp):'—'} (${r.n} plate${r.n===1?'':'s'})`);ok(acc,`True concentration: ${sci(st.N0)} CFU/mL (${r.exp?((r.exp/st.N0-1)*100).toFixed(0):'—'}% off)`);
+  const reasons=[cont?'sterility control contaminated':'',calcOK?'':'calculation does not match your counts',acc?'':'result more than 35% from the true count (technique errors)',misc?`${misc} plate(s) misread`:''].filter(Boolean);
+  ok(!reasons.length,reasons.length?'BATCH REJECTED: '+reasons.join(', ')+'.':'BATCH ACCEPTED: sterile, counted correctly, accurate result.')}
+ const out=R.map(r=>`<div style="color:${r[0]===null?'var(--mut)':r[0]?'var(--acc)':'var(--hot)'}">${r[0]===null?'○':r[0]?'✓':'✗'} ${r[1]}</div>`).join('');if(out!==cc2){cc2=out;$('comp').innerHTML=out;$('comp2').innerHTML=out}}
+const views=[['Overview',0,1.18,3.9,.35,1.12,-1.75],['Dilution rack',.15,1.1,1.05,-.35,1.0,-1.62],['Spread plating',.05,1.12,1.1,.62,1.0,-1.72],['Incubator',-.25,1.25,1.3,1.5,1.12,-1.95],['Colony counter',-.35,1.0,.75,2.08,1.03,-1.82]];
+let vi=0,th=0,ph=1.2,rad=3.6,gth=0,gph=1.2,grad=3.6;const tgt=V(.1,1.12,-1.75),gt=V(.1,1.12,-1.75);
+function setView(i){vi=i;const v=views[i];$('view').textContent='View: '+v[0];gth=v[1];gph=v[2];grad=v[3];gt.set(v[4],v[5],v[6])}
+function resetAll(){an=null;INST=false;newBatch((st.seed||0)+1);document.body.classList.remove('cnt');setTab('steps');onCC=-1;
+ TUBES.forEach((T,i)=>{T.g.position.set(TX(i),TY,TZ);T.g.rotation.set(0,0,0);capAt(T.cap,T.g,CAPH,CAPAW(i),0);T.vtx.visible=false;blankTube(i);tubeVis(i)});
+ pip.position.copy(PIPR);pTip.visible=false;tipLiq.visible=false;hand.visible=thumb.visible=false;plungerAt(0);ftip.visible=false;tipsReset();setPV(1000);
+ mk.position.copy(MKR);mk.rotation.set(0,0,PI/2);sprHome();sprFl.visible=false;ttP.rotation.y=0;door.rotation.y=door2.rotation.y=0;vxKnob.rotation.y=0;
+ PL.forEach(p=>{plateInit(p);p.g.position.copy(p.base);p.g.rotation.set(0,0,0);p.lid.position.set(0,0,0);p.lid.rotation.z=0;p.drop.visible=false;p.lk.x.clearRect(0,0,128,40);p.lk.t.needsUpdate=true});
+ $('ans').value='';P.forEach(p=>p.on=0);setView(0);$('result').hidden=true;lastSc=null;Object.assign(PLY,{x:.25,z:-.45,yaw:0,pitch:-.5});document.body.classList.remove('nb')}
+const LIT=[{n:'Dim',x:.62,k:.6,h:.32},{n:'Normal',x:.8,k:.8,h:.42},{n:'Bright',x:1.0,k:1.0,h:.52}];let litLv=1;
+function setLight(l){litLv=l;const L=LIT[l];renderer.toneMappingExposure=L.x;key.intensity=L.k;hemi.intensity=L.h;$('litB').textContent='Light: '+L.n;document.querySelectorAll('.lit button').forEach(b=>{const on=+b.dataset.l===l;b.classList.toggle('on',on);b.setAttribute('aria-checked',on)});try{localStorage.setItem('lab-light',String(l))}catch(e){}}
+try{const v=localStorage.getItem('lab-light');if(v!=null&&LIT[+v])litLv=+v}catch(e){}
+function wire(){document.querySelectorAll('.lit button').forEach(b=>b.onclick=()=>setLight(+b.dataset.l));$('litB').onclick=()=>setLight((litLv+1)%3);setLight(litLv);
+ if(matchMedia('(pointer:coarse)').matches)document.body.classList.add('touch');addEventListener('touchstart',()=>document.body.classList.add('touch'),{once:true,passive:true});
+ const setMob=()=>document.body.classList.toggle('mob',mob.matches);mob.addEventListener?mob.addEventListener('change',setMob):mob.addListener(setMob);setMob();
+ 
+ $('resumeB').onclick=resumeRun;$('startB').onclick=()=>startLevel('fps');$('classicB').onclick=()=>startLevel('orbit');$('qGo').onclick=closeQ;$('hintB').onclick=hint;$('hintC').onclick=hint;$('menuB').onclick=showMenu;$('nextB').onclick=()=>{selLV=Math.min(2,LV+1);startLevel(mode)};$('fpB').onclick=()=>{setMode('fps');startClock()};$('modeB').onclick=()=>setMode('orbit');$('nbB').onclick=toggleNB;$('mbar').onclick=()=>{if(mode==='fps'&&mob.matches&&!document.body.classList.contains('nb'))toggleNB()};
+ $('againB').onclick=()=>{selLV=LV;startLevel(mode)};$('reviewB').onclick=()=>{$('result').hidden=true;if(document.body.classList.contains('mob')){setTab('status');document.body.classList.add('nb')}else if(mode==='fps')document.body.classList.add('nb')};
+ $('useB').onclick=()=>interact();$('zoomB').onclick=()=>{zoom=!zoom;$('zoomB').classList.toggle('on',zoom)};
+ const jy=$('joy'),kn=$('knob');let jid=null;const jm=e=>{const r=jy.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),m=r.width/2-12,l=Math.min(1,Math.hypot(dx,dy)/m),a=Math.atan2(dy,dx);joy.x=Math.cos(a)*l;joy.y=Math.sin(a)*l;kn.style.transform=`translate(${joy.x*m}px,${joy.y*m}px)`};
+ jy.addEventListener('pointerdown',e=>{jid=e.pointerId;jy.setPointerCapture(e.pointerId);jm(e)});jy.addEventListener('pointermove',e=>{if(e.pointerId===jid)jm(e)});const je=e=>{if(e.pointerId!==jid)return;jid=null;joy.x=joy.y=0;kn.style.transform=''};jy.addEventListener('pointerup',je);jy.addEventListener('pointercancel',je);document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.t));$('b1').onclick=label;$('bvx').onclick=vortex;$('btip').onclick=newTip;$('btr').onclick=transfer;$('binoc').onclick=inoculate;$('bfl').onclick=flame;$('bspr').onclick=spread;$('binc').onclick=incubate;$('bcnt').onclick=openCount;$('ff').onclick=ff;$('sub').onclick=submit;
+ $('ans').addEventListener('keydown',e=>{if(e.key==='Enter')submit()});
+ $('bpv').onclick=cyclePV;
+ $('speed').onclick=()=>{const L=[1,2,5,10];ts=L[(L.indexOf(ts)+1)%4];asp=ts>=5?2:1;$('speed').textContent='Sim speed: '+ts+'×'};
+ $('view').onclick=()=>setView((vi+1)%views.length);$('reset').onclick=()=>{resetAll();tmsg('Bench reset: new culture, new batch.')};
+ const pb=$('pbtn');for(let i=0;i<9;i++){const b=document.createElement('button');b.id='p'+i;b.onclick=()=>{if(st.counting)selPlate(i)};pb.appendChild(b)}
+ const cur=()=>PL[st.sel],adv=()=>{const nx=PL.findIndex(p=>p.rec==null);if(nx>=0)selPlate(nx);else{cndraw();tmsg('All plates recorded. Now calculate CFU/mL and submit.')}};
+ $('rec').onclick=()=>{if(!st.counting)return;const p=cur();if(!p.marks.size&&st.sel!==8)return tmsg('Click the colonies to mark them first, or use TNTC / TFTC.');p.rec=p.marks.size;adv()};
+ $('tn').onclick=()=>{if(!st.counting)return;cur().rec='TNTC';adv()};$('tf').onclick=()=>{if(!st.counting)return;cur().rec='TFTC';adv()};
+ $('clr').onclick=()=>{if(!st.counting)return;const p=cur();p.marks=new Set();p.rec=null;p.dirty=true;cndraw()};
+ $('auto').onclick=()=>{if(!st.counting||LV===2)return;st.autoUsed=true;const p=cur();if(!p.all)return;if(p.lawn)return tmsg('Far too many colonies to count: this plate is TNTC.');p.marks=new Set(p.all.map((_,i)=>i));p.dirty=true;cndraw();tmsg(`${p.marks.size} colonies marked. Apply the 30–300 rule, then record.`)};
+ $('cc').addEventListener('click',e=>{if(!st.counting)return;const p=cur();if(!p.all)return;const el=$('cc'),cx=e.offsetX/el.clientWidth*300,cy=e.offsetY/el.clientHeight*300,s=150/.0455,mx=(cx-150)/s,my=(cy-150)/s;
+  let best=-1,bd=1e9;p.all.forEach((c,i)=>{if(p.marks.has(i))return;const d=Math.hypot(c[0]-mx,c[1]-my);if(d<bd){bd=d;best=i}});if(best>=0&&bd<=(colR(p,p.all[best],300)+5)/s){p.marks.add(best);p.dirty=true;cndraw()}})}
+const cv=$('scene'),ptr=new Map();let pd0=0;
+const PLY={x:.25,z:-.45,yaw:0,pitch:-.5},EYE=1.55,keys={},joy={x:0,y:0};let mode='orbit',locked=false,zoom=false,bob=0,lockFail=false;
+document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===cv;document.body.classList.toggle('locked',locked)});document.addEventListener('pointerlockerror',()=>{lockFail=true});
+function tryLock(){if(mode!=='fps'||document.body.classList.contains('touch')||lockFail||locked||!cv.requestPointerLock)return;try{const r=cv.requestPointerLock();if(r&&r.catch)r.catch(()=>{lockFail=true})}catch(e){lockFail=true}setTimeout(()=>{if(!locked&&mode==='fps')lockFail=true},600)}
+function unlock(){if(locked&&document.exitPointerLock)document.exitPointerLock()}
+addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();if(k==='tab'||(k==='n'&&mode==='fps')){if(mode==='fps'){e.preventDefault();toggleNB()}return}if(mode!=='fps'||modalOpen())return;
+ if(['arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();if(!keys[k]){if(k==='e')interact();if(k==='v')cyclePV();if(k==='h')hint()}keys[k]=true;if(k==='z')zoom=true});
+addEventListener('keyup',e=>{const k=e.key.toLowerCase();keys[k]=false;if(k==='z')zoom=false});addEventListener('blur',()=>{for(const k in keys)keys[k]=false});
+document.addEventListener('mousemove',e=>{if(mode==='fps'&&locked){PLY.yaw-=e.movementX*.0022;PLY.pitch=cl(PLY.pitch-e.movementY*.0022,-1.35,.9)}});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointerdown',e=>{if(mode==='fps'&&e.button===2){zoom=true;return}cv.setPointerCapture(e.pointerId);ptr.set(e.pointerId,{x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,t0:performance.now()});if(ptr.size===2){const[a,b]=[...ptr.values()];pd0=Math.hypot(a.x-b.x,a.y-b.y)}});
+cv.addEventListener('pointermove',e=>{const p=ptr.get(e.pointerId);if(!p)return;
+ if(mode==='fps'){if(!locked){PLY.yaw-=(e.clientX-p.x)*.005;PLY.pitch=cl(PLY.pitch-(e.clientY-p.y)*.005,-1.35,.9)}p.x=e.clientX;p.y=e.clientY;return}
+ if(ptr.size===2){p.x=e.clientX;p.y=e.clientY;const[a,b]=[...ptr.values()],d=Math.hypot(a.x-b.x,a.y-b.y);grad=cl(grad*pd0/d,.3,5);pd0=d;return}
+ gth=cl(gth-(e.clientX-p.x)*.005,-1.5,1.5);gph=cl(gph-(e.clientY-p.y)*.005,.35,1.5);p.x=e.clientX;p.y=e.clientY});
+const up=e=>{if(e.button===2){zoom=false;return}const p=ptr.get(e.pointerId);ptr.delete(e.pointerId);if(!p||mode!=='fps'||e.type==='pointercancel')return;if(Math.hypot(e.clientX-p.x0,e.clientY-p.y0)>8||performance.now()-p.t0>400)return;
+ if(locked)return interact();if(!document.body.classList.contains('touch')&&!lockFail)return tryLock();const r=cv.getBoundingClientRect();interact((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1)};
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('wheel',e=>{e.preventDefault();if(mode==='orbit')grad=cl(grad*(1+e.deltaY*.001),.3,5)},{passive:false});
+function resize(){const el=$('scene'),w=el.clientWidth||innerWidth,h=el.clientHeight||innerHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}addEventListener('resize',resize);if(window.ResizeObserver)new ResizeObserver(resize).observe($('scene'));resize();
+
+let last=performance.now(),acc=0,tAcc=0;
+function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;
+ fAcc+=dt;fN++;if(fN===45){const fps=fN/fAcc;fN=0;fAcc=0;if(fps<38){if(pr>1){pr=Math.max(1,pr-.25);renderer.setPixelRatio(pr);resize()}else if(shInt<8)shInt=8}}
+ if(++fc%shInt===0)renderer.shadowMap.needsUpdate=true;
+ const f=1+.1*Math.sin(now*.017)+.06*Math.sin(now*.029+1);flO.scale.set(1,f,1);flI.scale.set(1,1+.08*Math.sin(now*.023),1);flameL.intensity=.22+.05*Math.sin(now*.021);
+ if(st.inc&&!st.out)st.hr=Math.min(72,st.hr+dt*ts*.8);
+ if(st.spFlamed&&st.spT>0)st.spT=Math.max(0,st.spT-dt*.2*asp/2);
+ if(an){an.t+=dt*asp;an.upd&&an.upd(an.t/an.dur,an.t);if(an.t>=an.dur){const e=an.end;an=null;e&&e()}}
+ tAcc+=dt;if(tAcc>.2){tAcc=0;
+  const y=idr.x;y.fillStyle='#08131c';y.fillRect(0,0,256,64);y.font='bold 18px monospace';y.textAlign='left';y.fillStyle='#6fe0c5';y.fillText('INC 37.0°C',10,26);y.fillStyle=st.inc?'#fff':'#9db3b0';y.fillText(`TIME ${st.hr.toFixed(1)} h`,10,54);idr.t.needsUpdate=true;
+  const d=ccD.x;d.fillStyle='#0b1a0f';d.fillRect(0,0,128,40);d.fillStyle='#ff5a3c';d.font='bold 22px monospace';d.textAlign='center';d.textBaseline='middle';d.fillText(String(st.counting?PL[st.sel].marks.size:0).padStart(4,'0'),64,21);ccD.t.needsUpdate=true;
+  PL.forEach(p=>{if(p.dirty||(st.inc&&!st.out&&Math.abs(st.hr-p.lastHr)>1.5)){p.lastHr=st.hr;p.dirty=false;drawPlate(p.ct.x,256,p);p.ct.t.needsUpdate=true}})}
+ acc+=dt;if(acc>.15){acc=0;renderSteps();comp();panels()}
+ T.pip.m.position.set(pip.position.x,pip.position.y+.13,pip.position.z);
+ {const na=nextAct(),t=T[ACT2T[na]];beacon.visible=!!t&&!an&&st.ans==null&&!modalOpen()&&(LV===0||performance.now()<hintUntil);if(t){beacon.position.set(t.m.position.x,t.m.position.y+t.h/2+.06+.012*Math.sin(now*.004),t.m.position.z);beacon.rotation.y+=dt*2}}
+ if(mode==='fps'){const f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0)-joy.y,sd=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0)+joy.x,l=Math.hypot(f,sd);
+  if(l>.05&&!modalOpen()){const n=Math.min(1,l),fx=f/l*n,sx=sd/l*n,sy=Math.sin(PLY.yaw),cy=Math.cos(PLY.yaw),v=(keys.shift?2.4:1.3)*dt;PLY.x=cl(PLY.x+(-sy*fx+cy*sx)*v,-1.9,2.75);PLY.z=cl(PLY.z+(-cy*fx-sy*sx)*v,-.88,1.8);bob+=dt*9*n}
+  cam.position.set(PLY.x,EYE+(RM?0:Math.sin(bob)*.01),PLY.z);cam.rotation.set(PLY.pitch,PLY.yaw,0);const fv=zoom?26:62;if(Math.abs(cam.fov-fv)>.05){cam.fov+=(fv-cam.fov)*Math.min(1,dt*8);cam.updateProjectionMatrix()}aimUpdate()}
+ else{const k=Math.min(1,dt*5);th+=(gth-th)*k;ph+=(gph-ph)*k;rad+=(grad-rad)*k;tgt.lerp(gt,k);
+ const sp=Math.sin(ph),R2=rad*(cam.aspect<1.45?Math.min(2.3,1.45/cam.aspect):1);cam.position.set(tgt.x+R2*sp*Math.sin(th),tgt.y+R2*Math.cos(ph),tgt.z+R2*sp*Math.cos(th));cam.lookAt(tgt)}
+ arrowTick();chTick(now);saveAcc+=dt;if(saveAcc>2){saveAcc=0;saveRun()}stepP(dt);renderer.render(scene,cam);requestAnimationFrame(loop)}
+cam.rotation.order='YXZ';wire();loadLocal();applyLV();resetAll();setMode('orbit');renderMenu();initCloud();tmsg('Start with step 1: label the tubes and plates.');requestAnimationFrame(loop);
+</script>
+
+</body></html>
